@@ -1,0 +1,2031 @@
+{
+  "006": {
+    "file_name": "006_福山市立手城小学校.xlsm",
+    "school_name": "福山市立手城小学校",
+    "sheet_name": "福山市立手城小学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤-1",
+        "circuit": "ELB15A",
+        "voltage": 125
+      },
+      {
+        "row": 17,
+        "panel": "電灯分電盤-1",
+        "circuit": "ELB30A",
+        "voltage": 125
+      },
+      {
+        "row": 18,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ELB75A",
+        "voltage": 250
+      },
+      {
+        "row": 19,
+        "panel": "電灯分電盤-2",
+        "circuit": "ELB30A",
+        "voltage": 125
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤-1",
+        "circuit": "電灯分電盤-1",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 28,
+        "panel": "電灯分電盤-2",
+        "circuit": "電灯分電盤-2",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤-1",
+        "circuit": "ELB15A",
+        "capacity": 15
+      },
+      {
+        "row": 34,
+        "panel": "電灯分電盤-1",
+        "circuit": "ELB30A",
+        "capacity": 30
+      },
+      {
+        "row": 35,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ELB75A",
+        "capacity": 75
+      },
+      {
+        "row": 36,
+        "panel": "電灯分電盤-2",
+        "circuit": "ELB30A",
+        "capacity": 30
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "007": {
+    "file_name": "007_福山市立深津小学校.xlsm",
+    "school_name": "福山市立深津小学校",
+    "sheet_name": "福山市立深津小学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "ELB20A",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "ELB20A",
+        "capacity": 20
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "012": {
+    "file_name": "012_福山市立引野小学校.xlsm",
+    "school_name": "福山市立引野小学校",
+    "sheet_name": "福山市立引野小学校",
+    "has_data": false,
+    "insulation": [],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "019": {
+    "file_name": "019_福山市立熊野小学校.xlsm",
+    "school_name": "福山市立熊野小学校",
+    "sheet_name": "福山市立熊野小学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "主幹",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "主幹",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "020": {
+    "file_name": "020_福山市立水呑小学校.xlsm",
+    "school_name": "福山市立水呑小学校",
+    "sheet_name": "福山市立水呑小学校",
+    "has_data": false,
+    "insulation": [],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "021": {
+    "file_name": "021_福山市立箕島小学校.xlsm",
+    "school_name": "福山市立箕島小学校",
+    "sheet_name": "福山市立箕島小学校",
+    "has_data": false,
+    "insulation": [],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "022": {
+    "file_name": "022_福山市立高島小学校.xlsm",
+    "school_name": "福山市立高島小学校",
+    "sheet_name": "福山市立高島小学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "ELB30A",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "ELB30A",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "023": {
+    "file_name": "023_福山市立大津野小学校.xlsm",
+    "school_name": "福山市立大津野小学校",
+    "sheet_name": "福山市立大津野小学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "ELB30A",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "電灯主幹",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ制御盤",
+        "capacity": 75
+      },
+      {
+        "row": 35,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "capacity": 15
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "032": {
+    "file_name": "032_福山市立伊勢丘小学校.xlsm",
+    "school_name": "福山市立伊勢丘小学校",
+    "sheet_name": "福山市立伊勢丘小学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "ELB40A",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "主電源",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "モーターブレーカー0.75kw",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "ELB40A",
+        "capacity": 40
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "主電源",
+        "capacity": 25
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "033": {
+    "file_name": "033_福山市立曙小学校.xlsm",
+    "school_name": "福山市立曙小学校",
+    "sheet_name": "福山市立曙小学校",
+    "has_data": false,
+    "insulation": [],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "035": {
+    "file_name": "035_福山市立旭丘小学校.xlsm",
+    "school_name": "福山市立旭丘小学校",
+    "sheet_name": "福山市立旭丘小学校",
+    "has_data": false,
+    "insulation": [],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "043": {
+    "file_name": "043_福山市立緑丘小学校.xlsm",
+    "school_name": "福山市立緑丘小学校",
+    "sheet_name": "福山市立緑丘小学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "ELB30A",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ELB75A",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "ELB30A",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ELB75A",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "044": {
+    "file_name": "044_福山市立長浜小学校.xlsm",
+    "school_name": "福山市立長浜小学校",
+    "sheet_name": "福山市立長浜小学校",
+    "has_data": false,
+    "insulation": [],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "046": {
+    "file_name": "046_福山市立野々浜小学校.xlsm",
+    "school_name": "福山市立野々浜小学校",
+    "sheet_name": "福山市立野々浜小学校",
+    "has_data": false,
+    "insulation": [],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "049": {
+    "file_name": "049_福山市立新涯小学校.xlsm",
+    "school_name": "福山市立新涯小学校",
+    "sheet_name": "福山市立新涯小学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "主幹",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "主幹",
+        "capacity": 50
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "060": {
+    "file_name": "060_福山市立山南小学校.xlsm",
+    "school_name": "福山市立山南小学校",
+    "sheet_name": "福山市立山南小学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "照明主電源",
+        "voltage": 125
+      },
+      {
+        "row": 17,
+        "panel": "電灯分電盤",
+        "circuit": "ろ過器制御盤",
+        "voltage": 250
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "照明主電源",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "070": {
+    "file_name": "070_福山市立常石ともに学園.xlsm",
+    "school_name": "福山市立常石ともに学園",
+    "sheet_name": "福山市立常石ともに学園",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯動力分電盤(LM-1)",
+        "circuit": "電灯主幹",
+        "voltage": 125
+      },
+      {
+        "row": 17,
+        "panel": "電灯動力分電盤(LM-1)",
+        "circuit": "ろ過ポンプ制御盤",
+        "voltage": 250
+      },
+      {
+        "row": 18,
+        "panel": "電灯動力分電盤(LM-1)",
+        "circuit": "浄化槽",
+        "voltage": 250
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "主幹　ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      },
+      {
+        "row": 21,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "電磁弁",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯動力分電盤(LM-1)",
+        "circuit": "電灯動力分電盤(LM-1)",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯動力分電盤(LM-1)",
+        "circuit": "電灯主幹",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "電灯動力分電盤(LM-1)",
+        "circuit": "ろ過ポンプ制御盤",
+        "capacity": 75
+      },
+      {
+        "row": 35,
+        "panel": "電灯動力分電盤(LM-1)",
+        "circuit": "浄化槽",
+        "capacity": 20
+      },
+      {
+        "row": 36,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "主幹　ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "072": {
+    "file_name": "072_福山市立東中学校.xlsm",
+    "school_name": "福山市立東中学校",
+    "sheet_name": "福山市立東中学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電磁弁操作盤(L-1)",
+        "circuit": "ELB20A",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電磁弁操作盤(L-1)",
+        "circuit": "電磁弁操作盤(L-1)",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電磁弁操作盤(L-1)",
+        "circuit": "ELB20A",
+        "capacity": 20
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "073": {
+    "file_name": "073_福山市立城北中学校.xlsm",
+    "school_name": "福山市立城北中学校",
+    "sheet_name": "福山市立城北中学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "ELB30A",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "ELB30A",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "076": {
+    "file_name": "076_福山市立城東中学校.xlsm",
+    "school_name": "福山市立城東中学校",
+    "sheet_name": "福山市立城東中学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "プール棟(L-2)",
+        "circuit": "ELB30A",
+        "voltage": 125
+      },
+      {
+        "row": 17,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ELB25A",
+        "voltage": 250
+      },
+      {
+        "row": 18,
+        "panel": "プール棟(LM-2)",
+        "circuit": "ELB60A",
+        "voltage": 250
+      },
+      {
+        "row": 19,
+        "panel": "プール棟(LM-2)",
+        "circuit": "ELB30A",
+        "voltage": 125
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "プール棟(L-2)",
+        "circuit": "プール棟(L-2)",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 28,
+        "panel": "プール棟(LM-2)",
+        "circuit": "プール棟(LM-2)",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "三極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "プール棟(L-2)",
+        "circuit": "ELB30A",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ELB25A",
+        "capacity": 75
+      },
+      {
+        "row": 35,
+        "panel": "プール棟(LM-2)",
+        "circuit": "ELB60A",
+        "capacity": 60
+      },
+      {
+        "row": 36,
+        "panel": "プール棟(LM-2)",
+        "circuit": "ELB30A",
+        "capacity": 30
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "080": {
+    "file_name": "080_福山市立鳳中学校.xlsm",
+    "school_name": "福山市立鳳中学校",
+    "sheet_name": "福山市立鳳中学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "M-1分電盤",
+        "circuit": "加圧ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 17,
+        "panel": "M-1分電盤",
+        "circuit": "ろ過器制御盤",
+        "voltage": 250
+      },
+      {
+        "row": 18,
+        "panel": "M-1分電盤",
+        "circuit": "100V電源",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "M-1分電盤",
+        "circuit": "電磁弁",
+        "voltage": 125
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 21,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      },
+      {
+        "row": 22,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "給水電磁弁",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 27,
+        "panel": "M-1分電盤",
+        "circuit": "M-1分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 28,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "M-1分電盤",
+        "circuit": "加圧ポンプ",
+        "capacity": 20
+      },
+      {
+        "row": 34,
+        "panel": "M-1分電盤",
+        "circuit": "ろ過器制御盤",
+        "capacity": 50
+      },
+      {
+        "row": 35,
+        "panel": "M-1分電盤",
+        "circuit": "100V電源",
+        "capacity": 30
+      },
+      {
+        "row": 36,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "081": {
+    "file_name": "081_福山市立培遠中学校.xlsm",
+    "school_name": "福山市立培遠中学校",
+    "sheet_name": "福山市立培遠中学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "プール補給水制御盤",
+        "circuit": "ELB20A",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "プール補給水制御盤",
+        "circuit": "プール補給水制御盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "プール補給水制御盤",
+        "circuit": "ELB20A",
+        "capacity": 20
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "085": {
+    "file_name": "085_福山市立中央中学校.xlsm",
+    "school_name": "福山市立中央中学校",
+    "sheet_name": "福山市立中央中学校",
+    "has_data": false,
+    "insulation": [],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "091": {
+    "file_name": "091_福山市立大門中学校.xlsm",
+    "school_name": "福山市立大門中学校",
+    "sheet_name": "福山市立大門中学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤(AL-1)",
+        "circuit": "電灯主幹",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "主電源",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 125
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤(AL-1)",
+        "circuit": "電灯分電盤(AL-1)",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "三極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤(AL-1)",
+        "circuit": "電灯主幹",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "主電源",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "092": {
+    "file_name": "092_福山市立一ツ橋中学校.xlsm",
+    "school_name": "福山市立一ツ橋中学校",
+    "sheet_name": "福山市立一ツ橋中学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯分電盤",
+        "circuit": "ELB30A",
+        "voltage": 125
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 125
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯分電盤",
+        "circuit": "電灯分電盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "三極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯分電盤",
+        "circuit": "ELB30A",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "093": {
+    "file_name": "093_福山市立東朋中学校.xlsm",
+    "school_name": "福山市立東朋中学校",
+    "sheet_name": "福山市立東朋中学校",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "ろ過機制御盤",
+        "circuit": "ELB50A",
+        "voltage": 250
+      },
+      {
+        "row": 19,
+        "panel": "動力分電盤",
+        "circuit": "ろ過器制御盤",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "動力分電盤",
+        "circuit": "電磁弁制御回路",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "ろ過機制御盤",
+        "circuit": "ろ過機制御盤",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "動力分電盤",
+        "circuit": "動力分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "ろ過機制御盤",
+        "circuit": "ELB50A",
+        "capacity": 50
+      },
+      {
+        "row": 34,
+        "panel": "動力分電盤",
+        "circuit": "ろ過器制御盤",
+        "capacity": 60
+      },
+      {
+        "row": 35,
+        "panel": "動力分電盤",
+        "circuit": "電磁弁制御回路",
+        "capacity": 20
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "102": {
+    "file_name": "102_福山市立鞆の浦学園.xlsm",
+    "school_name": "福山市立鞆の浦学園",
+    "sheet_name": "福山市立鞆の浦学園",
+    "has_data": false,
+    "insulation": [],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  },
+  "103": {
+    "file_name": "103_福山市立想青学園.xlsm",
+    "school_name": "福山市立想青学園",
+    "sheet_name": "福山市立想青学園",
+    "has_data": true,
+    "insulation": [
+      {
+        "row": 16,
+        "panel": "電灯動力分電盤(LMT-1)",
+        "circuit": "電灯主幹",
+        "voltage": 125
+      },
+      {
+        "row": 17,
+        "panel": "電灯動力分電盤(LMT-1)",
+        "circuit": "ろ過ポンプ制御盤",
+        "voltage": 250
+      },
+      {
+        "row": 19,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "voltage": 250
+      },
+      {
+        "row": 20,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "塩素滅菌器",
+        "voltage": 250
+      },
+      {
+        "row": 21,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "電磁弁",
+        "voltage": 250
+      }
+    ],
+    "insulation_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding": [
+      {
+        "row": 26,
+        "panel": "電灯動力分電盤(LMT-1)",
+        "circuit": "電灯動力分電盤(LMT-1)",
+        "type": "Ｄ種"
+      },
+      {
+        "row": 27,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "プール循環浄化装置分電盤",
+        "type": "Ｄ種"
+      }
+    ],
+    "grounding_cols": {
+      "value": "D",
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "grounding_method_cell": "H23",
+    "grounding_method": "二極法",
+    "breaker_test": [
+      {
+        "row": 33,
+        "panel": "電灯動力分電盤(LMT-1)",
+        "circuit": "電灯主幹",
+        "capacity": 30
+      },
+      {
+        "row": 34,
+        "panel": "電灯動力分電盤(LMT-1)",
+        "circuit": "ろ過ポンプ制御盤",
+        "capacity": 75
+      },
+      {
+        "row": 35,
+        "panel": "プール循環浄化装置分電盤",
+        "circuit": "ろ過ポンプ",
+        "capacity": 75
+      }
+    ],
+    "breaker_test_cols": {
+      "judgment": "F",
+      "remarks": "G"
+    },
+    "header": {
+      "date_cell": "B5",
+      "time_cell": "B6",
+      "weather_cell": "D6",
+      "temperature_cell": "B7",
+      "humidity_cell": "D7",
+      "note_cell": "E5"
+    },
+    "special_notes_range": {
+      "start": "A39",
+      "end": "H49"
+    }
+  }
+}

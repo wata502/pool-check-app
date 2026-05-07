@@ -1,0 +1,3531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>プール点検アプリ</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0277bd">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon.png?v=1">
+<link rel="shortcut icon" href="/favicon.png?v=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#0277bd;--primary-dark:#01579b;--primary-light:#0288d1;
+  --accent:#e65100;--bg:#f0f4f8;--card:#fff;--border:#cfd8dc;
+  --text:#212121;--text-secondary:#546e7a;
+  --success:#1b5e20;--success-bg:#e8f5e9;
+  --warning:#e65100;--warning-bg:#fff3e0;
+  --danger:#b71c1c;--danger-bg:#ffebee;
+  --skip:#616161;--skip-bg:#eeeeee;
+  --radius:10px;--shadow:0 2px 8px rgba(0,0,0,0.09)
+}
+html,body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI",Meiryo,sans-serif;
+  background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;height:100%;overflow:hidden}
+body{display:flex;flex-direction:column}
+
+/* ===== Header ===== */
+.header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+  color:#fff;padding:12px 16px;display:flex;align-items:center;
+  justify-content:space-between;flex-shrink:0;z-index:100}
+.header h1{font-size:17px;font-weight:600;letter-spacing:.5px}
+.header-right{display:flex;gap:8px}
+
+/* ===== Tab Navigation ===== */
+.tab-nav{display:flex;background:#fff;border-bottom:2px solid var(--border);
+  position:sticky;top:0;z-index:90}
+.tab-btn{flex:1;padding:10px 4px;text-align:center;font-size:13px;font-weight:500;
+  color:var(--text-secondary);border:none;background:none;cursor:pointer;
+  border-bottom:3px solid transparent;transition:all .2s}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
+
+/* ===== Content Area ===== */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px}
+.tab-content{display:none;padding:12px}
+.tab-content.active{display:block}
+
+/* ===== Cards ===== */
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:16px;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:700;color:var(--primary);
+  margin-bottom:12px;padding-bottom:8px;
+  border-bottom:2px solid #e3f2fd;display:flex;align-items:center;gap:6px}
+/* details で折りたたみ可能なカード（パスワードマネージャ抑止用） */
+details.card>summary.card-title{cursor:pointer;list-style:none;user-select:none}
+details.card>summary.card-title::-webkit-details-marker{display:none}
+details.card>summary.card-title::after{content:"▼";margin-left:auto;font-size:11px;color:var(--text-secondary);transition:transform .2s}
+details.card[open]>summary.card-title::after{transform:rotate(180deg)}
+details.card:not([open])>summary.card-title{margin-bottom:0;padding-bottom:0;border-bottom:none}
+
+/* ===== Form Elements ===== */
+.form-group{margin-bottom:12px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
+.form-input,.form-select,.form-textarea{
+  width:100%;padding:10px 12px;border:1.5px solid var(--border);
+  border-radius:8px;font-size:15px;background:#fff;color:var(--text);
+  transition:border-color .2s;-webkit-appearance:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{
+  outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(2,119,189,.1)}
+.form-textarea{min-height:80px;resize:vertical}
+.form-input[type="number"]{-moz-appearance:textfield}
+.form-input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* ===== Buttons ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;
+  border:none;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:active{background:var(--primary-dark)}
+
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+.btn-block{width:100%;padding:14px}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-lg{padding:14px 24px;font-size:16px}
+
+/* ===== 観測地点（固定表示） ===== */
+/* アメダス 67401 固定のため地点選択UIは不要 */
+/* ===== Weather Button ===== */
+.weather-btn{width:100%;padding:14px;background:linear-gradient(135deg,#ff8f00,#ff6f00);
+  color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 3px 12px rgba(255,111,0,.3);transition:all .2s}
+.weather-btn:active{transform:scale(.98)}
+.weather-btn:disabled{opacity:.6;transform:none}
+.weather-info{background:#fff3e0;border-radius:8px;padding:12px;margin-top:10px;
+  font-size:13px;color:#e65100;display:none}
+.weather-info.show{display:block}
+
+/* ===== School Group Tabs ===== */
+.school-tab-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.school-tab{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);
+  background:#fff;font-size:12px;font-weight:500;cursor:pointer;
+  transition:all .15s;white-space:nowrap}
+.school-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+/* グループ割り当てピル */
+.sch-gpill{display:inline-block;padding:2px 10px;border-radius:12px;border:1.5px solid var(--border);
+  background:#fff;font-size:11px;font-weight:500;cursor:pointer;margin-right:4px;transition:all .15s}
+.sch-gpill.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+/* ===== School List ===== */
+.wp-search{position:relative;margin-bottom:8px}
+.wp-search input{padding-left:36px}
+.wp-search::before{content:"🔍";position:absolute;left:12px;top:50%;
+  transform:translateY(-50%);font-size:14px}
+.wp-list{max-height:200px;overflow-y:auto;border:1.5px solid var(--border);
+  border-radius:8px;transition:max-height .3s}
+.wp-list.expanded{max-height:calc(100vh - 260px)}
+.wp-item{display:flex;align-items:stretch;border-bottom:1px solid #f0f0f0;
+  cursor:pointer;transition:background .15s;position:relative}
+.wp-item:active,.wp-item.selected{background:#e3f2fd}
+.wp-item-content{flex:1;padding:12px;min-width:0}
+.wp-item .wp-name{font-weight:600;font-size:14px}
+.wp-item .wp-sub{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.wp-item .no-pool-tag{font-size:11px;color:#90a4ae;background:#eceff1;
+  padding:2px 8px;border-radius:10px;display:inline-block;margin-top:2px}
+/* ===== School Drag & Drop ===== */
+.drag-handle{width:36px;min-height:44px;display:flex;align-items:center;
+  justify-content:center;color:#ccc;font-size:20px;cursor:grab;flex-shrink:0;
+  user-select:none;touch-action:none;-webkit-user-select:none;
+  transition:color .15s;border:none;background:none}
+.drag-handle:hover{color:#999}
+.drag-handle.dh-active{cursor:grabbing;color:#666}
+.wp-item.is-dragging{opacity:0.3;background:#f0f4ff}
+.wp-item.drop-before{border-top:3px solid var(--primary)}
+.wp-item.drop-after{border-bottom:3px solid var(--primary)}
+.drag-ghost{position:fixed;top:0;left:0;z-index:9999;pointer-events:none;
+  background:#fff;border-radius:8px;padding:10px 16px;
+  box-shadow:0 6px 24px rgba(0,0,0,0.22);
+  font-size:14px;font-weight:600;color:var(--text);
+  max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  opacity:0.93;border-left:4px solid var(--primary)}
+
+/* ===== Measurement Table ===== */
+.meas-table{width:100%;border-collapse:collapse;font-size:13px}
+.meas-table th{background:#e3f2fd;color:var(--primary);padding:6px 8px;
+  text-align:center;font-weight:600;border:1px solid #bbdefb;font-size:12px}
+.meas-table td{padding:4px 6px;border:1px solid var(--border);vertical-align:middle}
+.meas-table tr:nth-child(even){background:#f8f9fa}
+.meas-table input,.meas-table select{
+  width:100%;border:none;background:transparent;font-size:14px;
+  padding:4px 2px;color:var(--text);text-align:right}
+.meas-table input:focus,.meas-table select:focus{
+  outline:none;border-radius:3px}
+.meas-table .cell-fixed{color:var(--text-secondary);font-size:12px;max-width:120px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.judgment-select{text-align:center;font-weight:600}
+/* 前回値プレースホルダ（View層のみ） */
+/* 前回値あり・今回未入力のセルに黄色背景。入力／選択で白に戻る（測定値・判定 共通） */
+.meas-table td.has-prev{background:#ffca28;transition:background .15s}
+/* 前回判定を薄く表示する判定セレクト（値選択で通常色に戻る） */
+.judgment-select.showing-prev{color:#888;font-weight:normal}
+/* 特記事項 textarea：前回値を placeholder 表示中は黄色背景 + グレー文字。入力で白に戻る */
+.form-textarea.has-prev{background:#ffca28;transition:background .15s}
+.form-textarea.has-prev::placeholder{color:#666;opacity:1;white-space:pre-wrap}
+.form-textarea.has-prev::-webkit-input-placeholder{color:#666;white-space:pre-wrap}
+
+/* ===== Data Display ===== */
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.data-item{background:#f8f9fa;border-radius:6px;padding:8px 10px}
+.data-item .label{font-size:11px;color:var(--text-secondary);font-weight:500}
+.data-item .value{font-size:16px;font-weight:700;color:var(--text);margin-top:2px}
+.data-item .value.filled{color:var(--primary)}
+.data-item.wide{grid-column:1/-1}
+
+/* ===== History ===== */
+.history-item{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:14px;margin-bottom:10px;cursor:pointer;transition:all .15s}
+.history-item:active{transform:scale(.99)}
+.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.history-date{font-weight:700;font-size:14px;color:var(--primary)}
+.history-wp{font-size:13px;color:var(--text);font-weight:600}
+.history-summary{font-size:12px;color:var(--text-secondary)}
+.history-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+
+/* ===== Settings ===== */
+.sync-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;
+  padding:3px 8px;border-radius:10px;margin-top:6px}
+.sync-badge.synced{background:#e8f5e9;color:#2e7d32}
+.sync-badge.connecting{background:#fff3e0;color:#e65100}
+.sync-badge.offline{background:#fce4ec;color:#b71c1c}
+.sync-badge.idle{background:#f5f5f5;color:#757575}
+
+/* ===== Modal ===== */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.5);z-index:200;justify-content:center;align-items:flex-end}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px 16px 0 0;width:100%;
+  max-height:85vh;overflow-y:auto;padding:20px;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:16px;position:sticky;top:-20px;margin-top:-20px;
+  padding:20px 20px 12px;margin-left:-20px;margin-right:-20px;
+  background:#fff;z-index:1}
+.modal-header h3{font-size:16px;font-weight:700}
+.modal-close{width:32px;height:32px;border-radius:50%;background:#f0f0f0;
+  border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ===== Confirm Overlay ===== */
+.confirm-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.5);z-index:200}
+.confirm-overlay.show{display:flex;justify-content:center;align-items:center}
+.confirm-box{background:#fff;border-radius:var(--radius);padding:20px;
+  width:92%;max-width:480px;max-height:85vh;overflow-y:auto}
+
+/* ===== Memo Button ===== */
+.wp-action-btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0;width:82px}
+.wp-action-btns>button{width:100%;padding:6px 0;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center;gap:3px;transition:all .15s}
+.wp-btn-change{background:rgba(255,255,255,0.8);color:var(--primary);border:1.5px solid var(--primary)}
+.wp-btn-change:active{background:#e3f2fd}
+.wp-btn-memo.empty{background:rgba(255,255,255,0.8);color:#9e9e9e;border:1.5px solid #bdbdbd}
+.wp-btn-memo.empty:active{background:#f5f5f5}
+.wp-btn-memo.has-memo{background:linear-gradient(135deg,#fff8e1,#ffecb3);color:#e65100;border:1.5px solid #ffb74d;box-shadow:0 1px 4px rgba(255,152,0,0.2)}
+.wp-btn-memo.has-memo:active{background:#ffe0b2}
+/* ===== Memo Inline Preview (選択中ボックス内のメモプレビュー) ===== */
+/* メモあり: 2行までスニペット表示。CSS line-clamp で軽量・JS計算なし */
+.wp-memo-preview{margin-top:6px;padding:6px 8px;background:#fff8e1;border-left:3px solid #ffb74d;border-radius:4px;font-size:12px;line-height:1.4;color:#5d4037;display:flex;align-items:flex-start;gap:6px;cursor:pointer}
+.wp-memo-preview:active{background:#ffe9c2}
+.wp-memo-preview .wp-memo-icon{flex-shrink:0;font-size:12px;line-height:1.4}
+.wp-memo-preview .wp-memo-snippet{
+  flex:1;min-width:0;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+  overflow:hidden;text-overflow:ellipsis;white-space:pre-wrap;word-break:break-word
+}
+.wp-memo-preview .wp-memo-toggle{flex-shrink:0;font-size:11px;color:var(--primary);background:transparent;border:none;padding:0 2px;cursor:pointer;font-weight:600;align-self:flex-end}
+.wp-memo-preview .wp-memo-toggle:active{opacity:0.6}
+/* ===== Memo Modal ===== */
+.memo-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:250;display:flex;align-items:flex-end;justify-content:center;opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
+.memo-overlay.show{opacity:1;visibility:visible}
+.memo-modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:480px;height:80vh;max-height:80vh;transform:translateY(100%);transition:transform .3s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;overflow:hidden}
+.memo-overlay.show .memo-modal{transform:translateY(0)}
+.memo-modal-header{padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;flex-shrink:0}
+.memo-modal-header h3{font-size:16px;font-weight:700;display:flex;align-items:center;gap:6px}
+.memo-site-badge{font-size:11px;font-weight:500;color:var(--primary);background:#e3f2fd;padding:2px 8px;border-radius:10px}
+.memo-modal-body{padding:16px 18px;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.memo-textarea{width:100%;flex:1;min-height:80px;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit;line-height:1.6;resize:none;overflow-y:auto;overscroll-behavior:contain;color:var(--text);transition:border-color .2s}
+.memo-textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(2,119,189,0.15)}
+.memo-textarea::placeholder{color:#bdbdbd}
+/* contenteditable div を textarea 同等に見せる (Bitwarden Autofill 対策) */
+div.memo-textarea{display:block;white-space:pre-wrap;word-break:break-word;cursor:text;-webkit-user-select:text;user-select:text;}
+div.memo-textarea:empty::before{content:attr(data-placeholder);color:#bdbdbd;white-space:pre-wrap;pointer-events:none;}
+div.memo-textarea:focus{outline:none;}
+.memo-char-count{text-align:right;font-size:11px;color:#9e9e9e;margin-top:4px}
+.memo-modal-footer{padding:10px 18px;padding-bottom:max(10px,env(safe-area-inset-bottom,10px));display:flex;gap:8px;border-top:1px solid #f0f0f0;flex-shrink:0}
+.memo-modal-footer>button{flex:1;padding:12px;font-size:14px;border-radius:10px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.memo-footer-cancel{background:#f5f5f5;color:var(--text-secondary);border:1px solid var(--border)!important}
+.memo-footer-save{background:var(--primary);color:#fff}
+
+/* ===== Toast ===== */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  background:#323232;color:#fff;padding:10px 20px;border-radius:24px;
+  font-size:13px;font-weight:500;z-index:300;opacity:0;transition:opacity .3s;
+  pointer-events:none;max-width:90%;text-align:center;white-space:pre-line}
+.toast.show{opacity:1}
+
+/* ===== Misc ===== */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-secondary)}
+.empty-state .icon{font-size:40px;margin-bottom:12px}
+.divider{height:1px;background:var(--border);margin:16px 0}
+.text-center{text-align:center}
+.text-sm{font-size:12px}
+.text-muted{color:var(--text-secondary)}
+.mt-8{margin-top:8px}
+.mt-12{margin-top:12px}
+.mb-8{margin-bottom:8px}
+.flex{display:flex}
+.flex-wrap{flex-wrap:wrap}
+.items-center{align-items:center}
+.justify-between{justify-content:space-between}
+.gap-8{gap:8px}
+.quick-phrase-buttons{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.quick-phrase-btn{padding:6px 10px;font-size:12px;background:#e3f2fd;color:var(--primary);
+  border:1px solid var(--primary);border-radius:6px;cursor:pointer;font-weight:500;transition:all .2s}
+.quick-phrase-btn:active{background:var(--primary);color:#fff}
+
+@media(max-width:480px){
+  .meas-table{font-size:12px}
+  .meas-table th,.meas-table td{padding:4px}
+  .weather-btn{padding:10px;font-size:13px}
+}
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏊 プール点検アプリ</h1>
+  <div class="header-right">
+    <span id="poolSyncBadge"></span>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="exportAllData()">💾</button>
+  </div>
+</div>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="input" onclick="switchTab('input')">📝 点検入力</button>
+  <button class="tab-btn" data-tab="history" onclick="switchTab('history')">📊 履歴</button>
+  <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ 設定</button>
+</div>
+
+<div class="content">
+
+  <!-- ========== 点検入力 Tab ========== -->
+  <div id="tab-input" class="tab-content active">
+
+    <!-- School Selection -->
+    <div class="card">
+      <div class="card-title">🏫 学校選択</div>
+      <div class="school-tab-bar" id="schoolTabBar">
+        <!-- JS で動的生成 -->
+      </div>
+      <div class="wp-search">
+        <input type="text" class="form-input" id="schoolSearch"
+               placeholder="　学校名で検索..." oninput="renderSchoolList()">
+      </div>
+      <div class="wp-list expanded" id="schoolList"></div>
+      <div id="selectedSchoolInfo" style="display:none;margin-top:10px;padding:10px;
+           background:#e8f5e9;border-radius:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:var(--success);font-size:13px">✓ 選択中</div>
+            <div id="selectedSchoolName" style="font-weight:600;font-size:15px;margin-top:2px"></div>
+          </div>
+          <div class="wp-action-btns">
+            <button class="wp-btn-change" onclick="expandSchoolList()">🔄 変更</button>
+            <button class="wp-btn-memo empty" id="memoBtn" onclick="openMemoModal()">📝 メモ</button>
+          </div>
+        </div>
+        <!-- 選択中学校のメモプレビュー (memoがあるときだけJSで挿入) -->
+        <div id="selectedSchoolMemoPreview"></div>
+      </div>
+    </div>
+
+    <!-- Weather / DateTime -->
+    <div class="card" id="inputFormCard" style="display:none">
+      <div class="card-title">🌤️ 時刻・天気情報（気象庁アメダス）</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <div style="font-size:12px;color:var(--text-secondary);padding:6px 0">
+          📍 観測地点: 広島県 福山市（アメダス 67401 固定）
+        </div>
+      </div>
+      <button class="weather-btn" id="weatherBtn" onclick="fetchAmedasWeather()">
+        <span>📡</span><span>気象庁データから取得</span>
+      </button>
+      <div class="weather-info" id="weatherInfo"></div>
+      <div class="form-row mt-12">
+        <div class="form-group">
+          <label class="form-label">点検日</label>
+          <input type="date" class="form-input" id="inp_date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">時刻</label>
+          <input type="time" class="form-input" id="inp_time">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">天気</label>
+          <select class="form-select" id="inp_weather">
+            <option value="">--</option>
+            <option value="晴">晴</option>
+            <option value="曇">曇</option>
+            <option value="雨">雨</option>
+            <option value="雪">雪</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">温度(℃)</label>
+          <input type="number" step="0.1" class="form-input" id="inp_temperature" placeholder="--">
+        </div>
+        <div class="form-group">
+          <label class="form-label">湿度(%)</label>
+          <input type="number" step="0.1" class="form-input" id="inp_humidity" placeholder="--">
+        </div>
+      </div>
+    </div>
+
+    <!-- 絶縁抵抗測定 -->
+    <div class="card" id="card_insulation" style="display:none">
+      <div class="card-title">⚡ 1. 絶縁抵抗測定</div>
+      <div style="overflow-x:auto">
+        <table class="meas-table">
+          <thead>
+            <tr>
+              <th>分電盤名</th>
+              <th>測定回路</th>
+              <th style="min-width:50px">測定電圧<br>[V]</th>
+              <th style="min-width:70px">測定値<br>[Ω]</th>
+              <th style="min-width:60px">判定</th>
+              <th style="min-width:70px">備考</th>
+            </tr>
+          </thead>
+          <tbody id="insulation_body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 接地抵抗測定 -->
+    <div class="card" id="card_grounding" style="display:none">
+      <div class="card-title">🌍 2. 接地抵抗測定</div>
+      <div style="overflow-x:auto">
+        <table class="meas-table">
+          <thead>
+            <tr>
+              <th>分電盤名</th>
+              <th>測定回路</th>
+              <th style="min-width:50px">接地種別</th>
+              <th style="min-width:70px">測定値<br>[Ω]</th>
+              <th style="min-width:60px">判定</th>
+              <th style="min-width:70px">備考</th>
+            </tr>
+          </thead>
+          <tbody id="grounding_body"></tbody>
+        </table>
+      </div>
+      <div class="form-group mt-12">
+        <label class="form-label">測定方式</label>
+        <select class="form-select" id="inp_grounding_method">
+          <option value="">-- 選択 --</option>
+          <option value="二極法">二極法</option>
+          <option value="三極法">三極法</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 漏電遮断器テスト -->
+    <div class="card" id="card_breaker" style="display:none">
+      <div class="card-title">🔌 3. 漏電遮断器テスト</div>
+      <div style="overflow-x:auto">
+        <table class="meas-table">
+          <thead>
+            <tr>
+              <th>分電盤名</th>
+              <th>測定回路</th>
+              <th style="min-width:60px">定格電流<br>[A]</th>
+              <th style="min-width:80px">確認内容</th>
+              <th style="min-width:60px">判定</th>
+              <th style="min-width:70px">備考</th>
+            </tr>
+          </thead>
+          <tbody id="breaker_body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 特記事項 -->
+    <div class="card" id="card_notes" style="display:none">
+      <div class="card-title">📝 4. 特記事項</div>
+      <div class="quick-phrase-buttons" id="quickPhraseButtons"></div>
+      <div class="form-group mt-8">
+        <textarea class="form-textarea" id="inp_special_notes"
+                  placeholder="特記事項を入力してください..." style="min-height:100px"
+                  oninput="_refreshTextareaPrev(this)"></textarea>
+      </div>
+    </div>
+
+    <!-- Save Button -->
+    <div id="saveArea" style="display:none;padding:0 0 20px">
+      <button class="btn btn-primary btn-block btn-lg" onclick="showConfirm()">
+        ✓ 入力内容を確認・保存
+      </button>
+      <button id="btnCancelEdit"
+              class="btn btn-outline btn-block btn-lg"
+              style="display:none;margin-top:8px"
+              onclick="cancelEdit()">
+        ✕ 編集をキャンセル
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ========== 履歴 Tab ========== -->
+  <div id="tab-history" class="tab-content">
+    <div class="card" style="padding:10px">
+      <div class="flex gap-8 items-center" style="margin-bottom:8px">
+        <select class="form-select" id="historyFilter" onchange="renderHistory()" style="flex:1">
+          <option value="">すべての学校</option>
+        </select>
+      </div>
+      <div class="flex gap-8 items-center" style="flex-wrap:wrap">
+        <label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" id="historySelectAll" onchange="toggleSelectAll(this.checked)"> 全選択
+        </label>
+        <button class="btn btn-outline btn-sm" onclick="sendSelectedToFirebase()" style="font-size:12px">🔥 選択を送信</button>
+        <button class="btn btn-outline btn-sm" onclick="sendAllUnsent()" style="font-size:12px">📤 未送信を一括送信</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSelected()" style="font-size:12px">🗑 選択を削除</button>
+      </div>
+      <div class="flex gap-8 items-center" style="margin-top:6px;border-top:1px solid #eee;padding-top:6px">
+        <button class="btn btn-outline btn-sm" onclick="backupHistory()" style="font-size:12px">💾 バックアップ</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('restoreFileInput').click()" style="font-size:12px">📂 復元</button>
+        <input type="file" id="restoreFileInput" accept=".json" style="display:none" onchange="restoreHistory(this)">
+      </div>
+    </div>
+    <div id="historyList"></div>
+  </div>
+
+  <!-- ========== 設定 Tab ========== -->
+  <div id="tab-settings" class="tab-content">
+
+    <!-- Firebase Settings -->
+    <details class="card" id="firebaseSettingsCard">
+      <summary class="card-title">🔥 Firebase 連携設定</summary>
+      <div class="form-group">
+        <label class="form-label">Firebase Realtime Database URL</label>
+        <input type="url" class="form-input" id="settingFirebaseUrl"
+               placeholder="https://xxxx-default-rtdb.firebaseio.com"
+               autocomplete="off" data-bwignore="true" data-1p-ignore="true" data-lpignore="true"
+               style="font-size:12px">
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">
+          プール点検専用ノード（pool_inspections等）にのみ書き込みます。
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">🔑 Firebase Web API キー</label>
+        <input type="text" class="form-input" id="settingFirebaseApiKey"
+               placeholder="AIzaSy..."
+               autocomplete="off" data-bwignore="true" data-1p-ignore="true" data-lpignore="true"
+               style="font-size:12px">
+      </div>
+      <!-- Firebase認証情報の遅延ロード (Bitwarden Autofill干渉対策):
+           普段は DOM に email/password input を存在させない。「認証情報を編集」
+           ボタンを押した時だけ、JS で動的に input を生成する。
+           普段は DOM 上に認証フォームが無いため、Bitwarden 等の Autofill サービスが
+           このページを「認証ページ」と認識せず、メモ操作中に保存ダイアログが出ない。
+           openMemoModal 冒頭でも防御的に hideFbCredsEditor() を呼んで DOM から外す。
+       -->
+      <div id="fbCredsContainer" class="form-group">
+        <!-- showFbCredsEditor() / hideFbCredsEditor() で中身を差し替える。 -->
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-primary" style="flex:1" onclick="saveFirebaseSettings()">
+          💾 設定を保存
+        </button>
+        <button class="btn btn-outline" style="flex:1" onclick="testFirebaseConnection()">
+          🔗 接続テスト
+        </button>
+      </div>
+      <div id="firebaseTestResult" style="font-size:12px;margin-top:4px;min-height:18px;font-weight:bold"></div>
+      <div id="configSyncStatus"></div>
+    </details>
+
+    <!-- Pool Mapping -->
+    <div class="card">
+      <div class="card-title">🗺️ マッピング情報</div>
+      <div id="mappingStatus" style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">
+        読み込み中...
+      </div>
+      <button class="btn btn-outline btn-block" onclick="reloadMapping()">🔄 マッピング再読み込み</button>
+    </div>
+
+    <!-- Phrase Management -->
+    <div class="card">
+      <div class="card-title">💬 特記事項 定型文管理</div>
+      <div id="phraseList" style="margin-bottom:10px"></div>
+      <div class="flex gap-8 mt-8">
+        <input type="text" class="form-input" id="newPhraseInput" placeholder="新しい定型文を入力..." style="flex:1">
+        <button class="btn btn-outline btn-sm" onclick="addPhrase()">追加</button>
+      </div>
+    </div>
+
+    <!-- Data Management -->
+    <div class="card">
+      <div class="card-title">💾 データ管理</div>
+      <!-- SW-FIX: Service Worker / Cache を一掃して強制リロード -->
+      <button class="btn btn-primary btn-block mb-8" onclick="forceAppUpdate()">🔄 アプリを最新版に強制更新</button>
+      <div class="divider"></div>
+      <button class="btn btn-outline btn-block mb-8" onclick="exportConfig()">📤 設定をエクスポート</button>
+      <button class="btn btn-outline btn-block mb-8" onclick="document.getElementById('importFile').click()">📥 設定をインポート</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
+      <div class="divider"></div>
+      <button class="btn btn-danger btn-block" onclick="resetAllData()">🗑️ 全データリセット</button>
+    </div>
+
+    <div class="card" style="background:#f8f9fa">
+      <div class="text-sm text-muted text-center">
+        プール点検アプリ v2.0<br>
+        天気データ: 気象庁アメダス（10分間隔観測値）<br>
+        データは端末内＋Firebase(pool_inspections)に保存<br>
+        <span style="color:#0277bd;font-size:10px">※ 既存点検システムのデータには一切アクセスしません</span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ===== Confirmation Overlay ===== -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:12px">📋 入力内容の確認</h3>
+    <div id="confirmContent"></div>
+    <div class="flex gap-8 mt-12">
+      <button class="btn btn-outline" style="flex:1" onclick="closeConfirm()">戻る</button>
+      <button class="btn btn-success" style="flex:1" id="btnSaveInspection" onclick="saveInspection()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Detail Modal ===== -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>点検記録詳細</h3>
+      <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
+    </div>
+    <div id="detailContent"></div>
+    <div class="flex gap-8 mt-12">
+      <button class="btn btn-danger btn-sm" style="flex:1" onclick="deleteInspection()">削除</button>
+      <button class="btn btn-primary btn-sm" style="flex:1" onclick="editInspection()">編集</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Memo Modal ===== -->
+<div class="memo-overlay" id="memoOverlay" onclick="handleMemoOverlayClick(event)">
+  <div class="memo-modal" id="memoModal">
+    <div class="memo-modal-header">
+      <h3>📝 学校メモ</h3>
+      <span class="memo-site-badge" id="memoSiteBadge"></span>
+    </div>
+    <div class="memo-modal-body">
+      <!-- メモ入力欄: contenteditable な div で実装 (Bitwarden Autofill 対策)
+           Android Autofill (Bitwarden 等) は <textarea>/<input> を OS 監視対象とし、
+           入力後に focus が外れると「保存しますか?」ダイアログを発火する。これは
+           HTML 属性 (autocomplete=off, data-bwignore 等) では抑止できない。
+           contenteditable な <div> は OS から見ると「ただのテキスト表示領域」で
+           Autofill 監視対象にならないため、ダイアログを構造的に出させない。
+           既存 JS は ta.value で読み書きするため、ファイル末尾の memo-init script
+           で .value プロパティを div に注入し互換性を保つ。 -->
+      <div class="memo-textarea" id="memoTextarea"
+        contenteditable="true"
+        role="textbox"
+        aria-multiline="true"
+        data-placeholder="この学校に関するメモを入力...&#10;（例: 鍵の場所、分電盤の位置、注意事項　など）"
+        oninput="updateMemoCharCount()"></div>
+      <div class="memo-char-count"><span id="memoCharCount">0</span> / 500文字</div>
+    </div>
+    <div class="memo-modal-footer">
+      <button class="memo-footer-cancel" onclick="closeMemoModal()">キャンセル</button>
+      <button class="memo-footer-save" onclick="saveMemo()">💾 保存して閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Toast ===== -->
+<div class="toast" id="toast"></div>
+
+<!-- SheetJS -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"
+  integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb"
+  crossorigin="anonymous"></script>
+<!-- 共有天気判定エンジン（アメダス専用・ステート型） -->
+<script src="weather_judge.js"></script>
+
+<script>
+// ============================================================
+// 定数・デフォルト設定
+// ============================================================
+const STORAGE_KEY_CONFIG  = 'pool_config';
+const STORAGE_KEY_RECORDS = 'pool_records';
+
+// プール点検専用 Firebase ノード（既存システムとは完全分離）
+const FB_NODE_INSPECTIONS = 'pool_inspections';
+const FB_NODE_MAPPING     = 'pool_mapping';
+const FB_NODE_CONFIG      = 'pool_config';
+const FB_NODE_COMMANDS    = 'pool_commands';
+
+const DEFAULT_CONFIG = {
+  firebaseUrl: '',
+  firebaseApiKey: '',
+  firebaseEmail: '',
+  firebasePassword: '',
+  phrases: [
+    '異常は認められません。',
+    '要注意',
+    '要点検',
+    '運転停止',
+    '正常稼働中',
+  ],
+};
+
+// 天気コード
+const WEATHER_CODE = { '晴': 1, '曇': 2, '雨': 3, '雪': 4 };
+
+// アメダスデータ取得先は常に67401（広島県福山市）固定
+const AMEDAS_STATION_CODE = '67401';
+
+// ============================================================
+// STATE
+// ============================================================
+let config = {};
+let inspections = [];
+let poolMapping = {};      // pool_mapping.json から取得したマッピング
+let selectedSchool = null; // { id, name, file_name, ... }
+let detailIndex = -1;
+let editMode = false;
+let editingRecordId = null;
+let selectedSchoolTab = null;   // 選択中のグループタブ index (null = すべて)
+let schoolTabEditMode = false;  // 学校タブ編集モード
+
+// Firebase auth tokens
+let _fbToken = null;
+let _fbTokenExpiry = 0;
+let _fbRefreshToken = null;
+
+// HTML エスケープ（XSS 防止） ── HTML-1/HTML-2
+function _esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// SSE controllers
+let _poolInspSseCtrl = null;
+let _poolInspSseReconn = null;
+let _configSseCtrl = null;
+let _configSseReconn = null;
+let _isSyncingConfig = false;
+let _configPushTimer = null;
+
+// ============================================================
+// Firebase 認証
+// ============================================================
+async function _fbEnsureToken() {
+  const apiKey   = (config.firebaseApiKey  || '').trim();
+  const email    = (config.firebaseEmail   || '').trim();
+  const password = (config.firebasePassword|| '').trim();
+  if (!apiKey || !email || !password) return;
+  const now = Date.now();
+  if (_fbToken && now < _fbTokenExpiry - 300000) return;
+  if (_fbRefreshToken) {
+    try {
+      const r = await fetch(
+        `https://securetoken.googleapis.com/v1/token?key=${apiKey}`,
+        { method:'POST',
+          headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body:`grant_type=refresh_token&refresh_token=${encodeURIComponent(_fbRefreshToken)}`
+        }
+      );
+      if (r.ok) {
+        const d = await r.json();
+        _fbToken = d.id_token; _fbRefreshToken = d.refresh_token;
+        _fbTokenExpiry = now + parseInt(d.expires_in)*1000; return;
+      }
+    } catch(e) { console.warn('[Auth] refresh失敗:', e); }
+  }
+  try {
+    const r = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email, password, returnSecureToken:true}) }
+    );
+    if (r.ok) {
+      const d = await r.json();
+      _fbToken = d.idToken; _fbRefreshToken = d.refreshToken;
+      _fbTokenExpiry = now + parseInt(d.expiresIn)*1000;
+    } else {
+      const err = await r.json().catch(()=>({}));
+      console.error('[Auth] サインイン失敗:', err?.error?.message || r.status);
+    }
+  } catch(e) { console.error('[Auth] サインインエラー:', e); }
+}
+
+function _fbUrl(url) {
+  if (!_fbToken) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return url + sep + 'auth=' + encodeURIComponent(_fbToken);
+}
+
+function _fbBase() {
+  return (config.firebaseUrl || '').trim().replace(/\/$/, '');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
+  config = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+
+  const savedRecs = localStorage.getItem(STORAGE_KEY_RECORDS);
+  inspections = savedRecs ? JSON.parse(savedRecs) : [];
+
+  // Set today's date
+  document.getElementById('inp_date').value = new Date().toISOString().slice(0,10);
+
+  // Load mapping
+  loadMappingData();
+
+  renderSchoolList();
+  renderHistory();
+  renderSettings();
+
+  // WeatherJudge v4 はステートレス（直近12件からBaseWeatherを自動決定）
+  // LocalStorage への天気状態保存・復元は不要
+
+  // Firebase sync（01_点検システムと同じフロー）
+  if (_fbBase()) {
+    _fbEnsureToken().finally(() => {
+      _loadConfigFromFirebase().then(() => startConfigSSE());
+      loadInspectionsFromFirebase().then(() => startPoolInspSSE());
+    });
+  } else {
+    updatePoolSyncStatus('idle');
+  }
+}
+
+// ============================================================
+// マッピングデータ読み込み
+// ============================================================
+async function loadMappingData() {
+  // まず Firebase から取得を試みる
+  const base = _fbBase();
+  if (base) {
+    try {
+      await _fbEnsureToken();
+      const url = _fbUrl(base + `/${FB_NODE_MAPPING}.json`);
+      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+          // _comment などのメタキーを除去
+          poolMapping = Object.fromEntries(
+            Object.entries(data).filter(([k]) => !k.startsWith('_'))
+          );
+          if (Object.keys(poolMapping).length > 0) {
+            console.log('[Mapping] Firebase から取得:', Object.keys(poolMapping).length, '校');
+            onMappingLoaded();
+            return;
+          }
+        }
+      }
+    } catch(e) { console.warn('[Mapping] Firebase取得失敗:', e); }
+  }
+
+  // フォールバック: pool_mapping.json（同一ドメインの場合）
+  try {
+    const resp = await fetch('pool_mapping.json', { signal: AbortSignal.timeout(5000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      poolMapping = Object.fromEntries(
+        Object.entries(data).filter(([k]) => !k.startsWith('_'))
+      );
+      console.log('[Mapping] ローカルファイルから取得:', Object.keys(poolMapping).length, '校');
+    }
+  } catch(e) { console.warn('[Mapping] ローカルファイル取得失敗:', e); }
+
+  onMappingLoaded();
+}
+
+function onMappingLoaded() {
+  renderSchoolList();
+  updateMappingStatus();
+}
+
+function updateMappingStatus() {
+  const el = document.getElementById('mappingStatus');
+  if (!el) return;
+  const count = Object.keys(poolMapping).length;
+  const activeCount = Object.values(poolMapping).filter(s => s.has_data).length;
+  if (count > 0) {
+    el.innerHTML = `<span style="color:var(--success)">✅ ${count}校読み込み済（うち点検対象: ${activeCount}校）</span>`;
+  } else {
+    el.innerHTML = `<span style="color:var(--danger)">❌ マッピング未読み込み。Firebaseに接続するかpool_mapping.jsonを配置してください</span>`;
+  }
+}
+
+async function reloadMapping() {
+  showToast('マッピングを再読み込み中...');
+  poolMapping = {};
+  await loadMappingData();
+  showToast('マッピングを再読み込みしました');
+}
+
+// ============================================================
+// 学校グループタブ（点検記録アプリと同じ操作）
+// ============================================================
+const DEFAULT_POOL_GROUP_NAMES = ['小学校', '中学校', '学園等'];
+function getPoolGroupTabNames() {
+  if (!config.poolTabNames || !Array.isArray(config.poolTabNames) || config.poolTabNames.length === 0) {
+    config.poolTabNames = [...DEFAULT_POOL_GROUP_NAMES];
+  }
+  return config.poolTabNames;
+}
+function addPoolGroupTab() {
+  const names = getPoolGroupTabNames();
+  names.push('グループ' + (names.length + 1));
+  config.poolTabNames = names;
+  saveConfig();
+  renderSchoolList();
+}
+function removePoolGroupTab(idx) {
+  const names = getPoolGroupTabNames();
+  const assign = config.poolTabAssign || {};
+  const hasAssigned = Object.values(assign).some(arr => (arr || []).includes(idx));
+  if (hasAssigned) { showToast('学校が割り当てられています。先に解除してください'); return; }
+  names.splice(idx, 1);
+  config.poolTabNames = names;
+  Object.keys(assign).forEach(key => {
+    assign[key] = (assign[key] || []).map(i => i > idx ? i - 1 : i);
+    if (assign[key].length === 0) delete assign[key];
+  });
+  config.poolTabAssign = assign;
+  if (selectedSchoolTab === idx) selectedSchoolTab = null;
+  else if (selectedSchoolTab > idx) selectedSchoolTab--;
+  saveConfig();
+  renderSchoolList();
+}
+function renamePoolGroupTab(idx) {
+  const names = getPoolGroupTabNames();
+  const newName = prompt('グループ名を変更', names[idx]);
+  if (newName !== null && newName.trim()) {
+    names[idx] = newName.trim();
+    config.poolTabNames = names;
+    saveConfig();
+    renderSchoolList();
+  }
+}
+// 長押し用タイマー管理（タブ名変更）
+let _schTabLpTimer = null;
+let _schTabLpFired = false;
+function schTabTouchStart(idx, e) {
+  _schTabLpFired = false;
+  _schTabLpTimer = setTimeout(() => { _schTabLpFired = true; e.preventDefault(); renamePoolGroupTab(idx); }, 500);
+}
+function schTabTouchEnd() { clearTimeout(_schTabLpTimer); _schTabLpTimer = null; }
+function schTabClick(idx, e) {
+  if (_schTabLpFired) { _schTabLpFired = false; e.preventDefault(); return; }
+  selectSchoolTab(idx);
+}
+function selectSchoolTab(idx) {
+  selectedSchoolTab = idx;
+  renderSchoolList();
+}
+function toggleSchoolEditMode() {
+  schoolTabEditMode = !schoolTabEditMode;
+  if (!schoolTabEditMode) saveConfig();
+  renderSchoolList();
+}
+function clearAllSchoolGroups() {
+  if (!confirm('すべての学校のグループ割り当てを解除しますか？')) return;
+  config.poolTabAssign = {};
+  selectedSchoolTab = null;
+  saveConfig();
+  renderSchoolList();
+}
+function toggleSchoolGroup(schoolId, groupIdx) {
+  if (!config.poolTabAssign) config.poolTabAssign = {};
+  if (!config.poolTabAssign[schoolId]) config.poolTabAssign[schoolId] = [];
+  const arr = config.poolTabAssign[schoolId];
+  const pos = arr.indexOf(groupIdx);
+  if (pos >= 0) arr.splice(pos, 1);
+  else arr.push(groupIdx);
+  if (arr.length === 0) delete config.poolTabAssign[schoolId];
+  saveConfig();
+  renderSchoolList();
+}
+
+// ============================================================
+// 学校一覧
+// ============================================================
+function renderSchoolList() {
+  const list = document.getElementById('schoolList');
+  const tabBar = document.getElementById('schoolTabBar');
+  const searchVal = (document.getElementById('schoolSearch').value || '').toLowerCase();
+  const assign = config.poolTabAssign || {};
+  const gNames = getPoolGroupTabNames();
+
+  // カスタム順序があればそれを使い、なければ番号順
+  const allEntries = Object.entries(poolMapping);
+  const customOrder = config.poolSchoolOrder;
+  let entries;
+  if (customOrder && Array.isArray(customOrder) && customOrder.length > 0) {
+    const orderMap = {};
+    customOrder.forEach((id, i) => { orderMap[id] = i; });
+    entries = allEntries.sort((a, b) => {
+      const ai = orderMap[a[0]] !== undefined ? orderMap[a[0]] : 999999;
+      const bi = orderMap[b[0]] !== undefined ? orderMap[b[0]] : 999999;
+      if (ai !== bi) return ai - bi;
+      return parseInt(a[0]) - parseInt(b[0]);
+    });
+  } else {
+    entries = allEntries.sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+  }
+
+  if (entries.length === 0) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-secondary);font-size:13px">マッピングデータが読み込まれていません</div>';
+    tabBar.innerHTML = '';
+    return;
+  }
+
+  // ── グループごとのメンバー数を集計 ──
+  const counts = new Array(gNames.length).fill(0);
+  Object.values(assign).forEach(arr => {
+    (arr || []).forEach(i => { if (i >= 0 && i < gNames.length) counts[i]++; });
+  });
+  const hasAny = counts.some(c => c > 0) || schoolTabEditMode;
+
+  // ── タブバー描画 ──
+  if (hasAny) {
+    let th = `<button class="school-tab ${selectedSchoolTab === null ? 'active' : ''}"
+      onclick="selectSchoolTab(null)">すべて</button>`;
+    gNames.forEach((nm, i) => {
+      if (counts[i] > 0 || schoolTabEditMode) {
+        const delBtn = (schoolTabEditMode && counts[i] === 0)
+          ? `<span onclick="event.stopPropagation();removePoolGroupTab(${i})" style="margin-left:3px;color:#e53935;font-size:11px;line-height:1" title="削除">✕</span>`
+          : '';
+        th += `<button class="school-tab ${selectedSchoolTab === i ? 'active' : ''}"
+          onclick="schTabClick(${i},event)"
+          ondblclick="event.stopPropagation();renamePoolGroupTab(${i})"
+          ontouchstart="schTabTouchStart(${i},event)"
+          ontouchend="schTabTouchEnd()"
+          ontouchcancel="schTabTouchEnd()">${nm}(${counts[i]})${delBtn}</button>`;
+      }
+    });
+    if (schoolTabEditMode) {
+      th += `<button class="school-tab" style="background:#e3f2fd;border-color:#90caf9;color:#1565c0"
+        onclick="addPoolGroupTab()">＋</button>`;
+      th += `<button class="school-tab" style="background:#fce4ec;border-color:#e57373;color:#b71c1c"
+        onclick="clearAllSchoolGroups()">🗑 一括解除</button>`;
+      th += `<button class="school-tab" style="background:#e8f5e9;border-color:#4caf50;color:#2e7d32;margin-left:auto"
+        onclick="toggleSchoolEditMode()">✓ 完了</button>`;
+    } else {
+      th += `<button class="school-tab" style="margin-left:auto"
+        onclick="toggleSchoolEditMode()">✏️</button>`;
+    }
+    tabBar.innerHTML = th;
+  } else {
+    tabBar.innerHTML = `<span style="flex:1"></span>
+      <button class="school-tab" style="font-size:11px" onclick="toggleSchoolEditMode()">✏️ グループ編集</button>`;
+  }
+
+  // ── リスト描画 ──
+  let html = '';
+  entries.forEach(([id, school]) => {
+    // No.220は非表示
+    if (id === '220') return;
+    const schoolArr = assign[id] || [];
+    // タブフィルタ
+    if (selectedSchoolTab !== null && !schoolArr.includes(selectedSchoolTab)) return;
+    // テキストフィルタ
+    if (searchVal && !school.school_name.toLowerCase().includes(searchVal)) return;
+
+    const isSelected = selectedSchool && selectedSchool.id === id;
+    const noPool = !school.has_data;
+
+    if (schoolTabEditMode) {
+      // ── 編集モード：グループ割り当てピルを表示 ──
+      let pills = '';
+      gNames.forEach((nm, i) => {
+        const on = schoolArr.includes(i);
+        pills += `<button class="sch-gpill ${on ? 'on' : ''}"
+          onclick="event.stopPropagation();toggleSchoolGroup('${id}',${i})">${nm}</button>`;
+      });
+      html += `<div class="wp-item" style="padding:8px 12px" data-school-id="${id}">
+        <div class="wp-name">${school.school_name}</div>
+        <div class="wp-sub">No.${id}${noPool ? ' <span class="no-pool-tag">プール運用なし</span>' : ''}</div>
+        <div style="margin-top:4px">${pills}</div>
+      </div>`;
+    } else {
+      // ── 通常モード（ドラッグハンドル付き）──
+      const dh = `<div class="drag-handle" title="長押し/ドラッグで並び替え"
+        onmousedown="_dhMouseDown(event,this)"
+        ontouchstart="_dhTouchStart(event,this)">⠿</div>`;
+      if (noPool) {
+        html += `<div class="wp-item${isSelected?' selected':''}" data-school-id="${id}" style="opacity:.7">
+          ${dh}<div class="wp-item-content" onclick="selectSchool('${id}')">
+            <div class="wp-name">${school.school_name}</div>
+            <div class="wp-sub">No.${id} <span class="no-pool-tag">プール運用なし</span></div>
+          </div></div>`;
+      } else {
+        const insNum = (school.insulation||[]).length;
+        const grNum  = (school.grounding||[]).length;
+        const brNum  = (school.breaker_test||[]).length;
+        html += `<div class="wp-item${isSelected?' selected':''}" data-school-id="${id}">
+          ${dh}<div class="wp-item-content" onclick="selectSchool('${id}')">
+            <div class="wp-name">${school.school_name}</div>
+            <div class="wp-sub">No.${id} ｜ 絶縁${insNum}行 接地${grNum}行 漏電${brNum}行</div>
+          </div></div>`;
+      }
+    }
+  });
+
+  list.innerHTML = html || '<div style="padding:16px;text-align:center;color:var(--text-secondary);font-size:13px">該当なし</div>';
+}
+
+function selectSchool(id) {
+  const school = poolMapping[id];
+  if (!school) return;
+  selectedSchool = { id, ...school };
+
+  // Show selected info
+  document.getElementById('selectedSchoolName').textContent = school.school_name;
+  document.getElementById('selectedSchoolInfo').style.display = 'block';
+  document.getElementById('schoolList').classList.remove('expanded');
+
+  // Build form
+  buildInputForm();
+  updateMemoBtn();
+  showToast(school.school_name + ' を選択しました');
+}
+
+function expandSchoolList() {
+  document.getElementById('schoolList').classList.add('expanded');
+}
+
+// ============================================================
+// 入力フォーム構築
+// ============================================================
+function buildInputForm() {
+  if (!selectedSchool) return;
+  const school = selectedSchool;
+
+  // 基本情報カード表示
+  document.getElementById('inputFormCard').style.display = 'block';
+
+  // 接地測定方式をセット（デフォルト）
+  const methodSel = document.getElementById('inp_grounding_method');
+  methodSel.value = school.grounding_method || '';
+
+  // 絶縁抵抗
+  buildInsulationTable(school);
+  document.getElementById('card_insulation').style.display =
+    (school.insulation||[]).length > 0 ? 'block' : 'none';
+
+  // 接地抵抗
+  buildGroundingTable(school);
+  document.getElementById('card_grounding').style.display =
+    (school.grounding||[]).length > 0 ? 'block' : 'none';
+
+  // 漏電遮断器
+  buildBreakerTable(school);
+  document.getElementById('card_breaker').style.display =
+    (school.breaker_test||[]).length > 0 ? 'block' : 'none';
+
+  // 特記事項
+  document.getElementById('card_notes').style.display = 'block';
+  setupSpecialNotesPrev(school);
+  renderQuickPhraseButtons();
+
+  document.getElementById('saveArea').style.display = 'block';
+
+  // 日付をデフォルトセット
+  if (!document.getElementById('inp_date').value) {
+    document.getElementById('inp_date').value = new Date().toISOString().slice(0,10);
+  }
+
+  // Enterキーで次の入力セルに移動
+  _setupEnterNavigation();
+}
+
+// HTML-4: 名前付き関数で addEventListener の重複登録を防止
+function _enterNavHandler(e) {
+  if (e.key !== 'Enter') return;
+  const el = e.target;
+  if (el.tagName !== 'INPUT' && el.tagName !== 'SELECT') return;
+  e.preventDefault();
+  const container = document.getElementById('tab-input');
+  if (!container) return;
+  const inputs = Array.from(container.querySelectorAll('input, select'));
+  const idx = inputs.indexOf(el);
+  if (idx < 0) return;
+  for (let i = idx + 1; i < inputs.length; i++) {
+    if (!inputs[i].disabled && inputs[i].offsetParent !== null) {
+      inputs[i].focus();
+      if (inputs[i].type === 'number' || inputs[i].type === 'text') {
+        inputs[i].select();
+      }
+      return;
+    }
+  }
+}
+function _setupEnterNavigation() {
+  const container = document.getElementById('tab-input');
+  if (!container) return;
+  container.removeEventListener('keydown', _enterNavHandler);
+  container.addEventListener('keydown', _enterNavHandler);
+}
+
+// ============================================================
+// 前回値プレースホルダ（View層専用・保存データには影響しない）
+//   - 同じ school_id で status === 'success' の最新記録を参照
+//   - 行の対応付けは panel + circuit の一致で行う
+//   - 入力欄が空のときのみ placeholder として薄グレー表示
+// ============================================================
+function getLastSuccessRecord(schoolId) {
+  if (!schoolId || !Array.isArray(inspections) || !inspections.length) return null;
+  const matches = inspections.filter(r => r && r.school_id === schoolId && r.status === 'success');
+  if (!matches.length) return null;
+  matches.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+  return matches[0];
+}
+function _findPrevRow(prevRows, panel, circuit) {
+  if (!Array.isArray(prevRows) || !prevRows.length) return null;
+  const p = panel || '';
+  const c = circuit || '';
+  return prevRows.find(r => (r && (r.panel || '') === p && (r.circuit || '') === c)) || null;
+}
+function _escAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function buildInsulationTable(school) {
+  const tbody = document.getElementById('insulation_body');
+  const rows = school.insulation || [];
+  const prevRec = getLastSuccessRecord(school.id);
+  const prevRows = prevRec ? (prevRec.insulation || []) : [];
+  tbody.innerHTML = rows.map((r, i) => {
+    const p = _findPrevRow(prevRows, r.panel, r.circuit);
+    const pv = p && p.value != null ? String(p.value).trim() : '';
+    const pj = p && p.judgment ? String(p.judgment).trim() : '';
+    const valPh = pv !== '' ? _escAttr(pv) : '--';
+    const valCellCls = pv !== '' ? ' has-prev' : '';
+    const valHasPrev = pv !== '' ? '1' : '';
+    const jdgCellCls = pj !== '' ? ' has-prev' : '';
+    const jdgHasPrev = pj !== '' ? '1' : '';
+    const jdgSelCls = pj !== '' ? ' showing-prev' : '';
+    const jdgPrevOpt = pj !== ''
+      ? `<option value="" disabled hidden selected class="prev-disp">${_escAttr(pj)}</option>`
+      : '';
+    return `
+    <tr>
+      <td class="cell-fixed">${r.panel || ''}</td>
+      <td class="cell-fixed">${r.circuit || ''}</td>
+      <td style="text-align:right;color:var(--text-secondary)">${r.voltage || ''}</td>
+      <td class="${valCellCls.trim()}"><input type="number" step="1" min="0" id="ins_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"></td>
+      <td class="${jdgCellCls.trim()}">
+        <select class="judgment-select${jdgSelCls}" id="ins_jdg_${i}" data-has-prev="${jdgHasPrev}" onchange="_refreshJdgPrev(this)">
+          ${jdgPrevOpt}
+          <option value="">--</option>
+          <option value="良">良</option>
+          <option value="注意">注意</option>
+          <option value="不良">不良</option>
+        </select>
+      </td>
+      <td><input type="text" id="ins_rem_${i}" placeholder="備考"></td>
+    </tr>
+  `;
+  }).join('');
+}
+
+function buildGroundingTable(school) {
+  const tbody = document.getElementById('grounding_body');
+  const rows = school.grounding || [];
+  const prevRec = getLastSuccessRecord(school.id);
+  const prevRows = prevRec ? (prevRec.grounding || []) : [];
+  tbody.innerHTML = rows.map((r, i) => {
+    const p = _findPrevRow(prevRows, r.panel, r.circuit);
+    const pv = p && p.value != null ? String(p.value).trim() : '';
+    const pj = p && p.judgment ? String(p.judgment).trim() : '';
+    const valPh = pv !== '' ? _escAttr(pv) : '--';
+    const valCellCls = pv !== '' ? ' has-prev' : '';
+    const valHasPrev = pv !== '' ? '1' : '';
+    const jdgCellCls = pj !== '' ? ' has-prev' : '';
+    const jdgHasPrev = pj !== '' ? '1' : '';
+    const jdgSelCls = pj !== '' ? ' showing-prev' : '';
+    const jdgPrevOpt = pj !== ''
+      ? `<option value="" disabled hidden selected class="prev-disp">${_escAttr(pj)}</option>`
+      : '';
+    return `
+    <tr>
+      <td class="cell-fixed">${r.panel || ''}</td>
+      <td class="cell-fixed">${r.circuit || ''}</td>
+      <td style="text-align:center;color:var(--text-secondary);font-size:12px">${r.type || ''}</td>
+      <td class="${valCellCls.trim()}"><input type="number" step="1" min="0" id="gnd_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"></td>
+      <td class="${jdgCellCls.trim()}">
+        <select class="judgment-select${jdgSelCls}" id="gnd_jdg_${i}" data-has-prev="${jdgHasPrev}" onchange="_refreshJdgPrev(this)">
+          ${jdgPrevOpt}
+          <option value="">--</option>
+          <option value="良">良</option>
+          <option value="注意">注意</option>
+          <option value="不良">不良</option>
+        </select>
+      </td>
+      <td><input type="text" id="gnd_rem_${i}" placeholder="備考"></td>
+    </tr>
+  `;
+  }).join('');
+}
+
+function buildBreakerTable(school) {
+  const tbody = document.getElementById('breaker_body');
+  const rows = school.breaker_test || [];
+  const prevRec = getLastSuccessRecord(school.id);
+  const prevRows = prevRec ? (prevRec.breaker_test || []) : [];
+  tbody.innerHTML = rows.map((r, i) => {
+    const p = _findPrevRow(prevRows, r.panel, r.circuit);
+    const pj = p && p.judgment ? String(p.judgment).trim() : '';
+    const jdgCellCls = pj !== '' ? ' has-prev' : '';
+    const jdgHasPrev = pj !== '' ? '1' : '';
+    const jdgSelCls = pj !== '' ? ' showing-prev' : '';
+    const jdgPrevOpt = pj !== ''
+      ? `<option value="" disabled hidden selected class="prev-disp">${_escAttr(pj)}</option>`
+      : '';
+    return `
+    <tr>
+      <td class="cell-fixed">${r.panel || ''}</td>
+      <td class="cell-fixed">${r.circuit || ''}</td>
+      <td style="text-align:right;color:var(--text-secondary)">${r.capacity || ''}</td>
+      <td><span id="brk_content_${i}" style="font-size:12px;color:var(--text-secondary)">${i === 0 ? 'テストボタン押下時トリップ動作' : '同上'}</span></td>
+      <td class="${jdgCellCls.trim()}">
+        <select class="judgment-select${jdgSelCls}" id="brk_jdg_${i}" data-has-prev="${jdgHasPrev}" onchange="_refreshJdgPrev(this)">
+          ${jdgPrevOpt}
+          <option value="">--</option>
+          <option value="良">良</option>
+          <option value="注意">注意</option>
+          <option value="不良">不良</option>
+        </select>
+      </td>
+      <td><input type="text" id="brk_rem_${i}" placeholder="備考"></td>
+    </tr>
+  `;
+  }).join('');
+}
+
+// ============================================================
+// 気象庁アメダス 10分値 取得
+// ============================================================
+// weather_judge.js の判定結果ラベル → Excel コード変換
+// ※「曇り（雨の可能性高）」など曇り系に"雨"が含まれるため startsWith で先頭判定
+function _weatherLabelToCode(label) {
+  if (!label || label === 'データなし') return '';
+  if (label.startsWith('雪')) return '雪';
+  if (label.startsWith('雨')) return '雨';
+  if (label.startsWith('晴')) return '晴';
+  return '曇';   // 曇り等すべて曇
+}
+
+// weather_judge.js の判定結果ラベル → 表示アイコン
+function _weatherLabelToIcon(label) {
+  if (!label || label === 'データなし') return '❓';
+  if (label.startsWith('雨')) return '☔';
+  if (label.startsWith('雪')) return '⛄';
+  if (label.startsWith('晴')) return '☀';
+  return '☁';
+}
+
+// ─── アメダスデータ取得（WeatherJudge 共有モジュール使用） ───
+// ・アメダス観測所 = 常に 67401（広島県福山市）固定
+// ・直近12件（10分間隔・2時間分）を並列取得して判定エンジンに渡す
+//   → 自動観測記号が「正時」にしか記録されない問題を解消
+async function fetchAmedasWeather() {
+  const btn  = document.getElementById('weatherBtn');
+  const info = document.getElementById('weatherInfo');
+
+  const now = new Date();
+  document.getElementById('inp_date').value = now.toISOString().slice(0,10);
+  document.getElementById('inp_time').value = now.toTimeString().slice(0,5);
+
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span><span>取得中...</span>';
+  info.innerHTML = '';
+  info.classList.remove('show');
+
+  try {
+    const pad2 = n => String(n).padStart(2, '0');
+
+    // ─── 通信A: 最新10分値（map API 1件のみ）───────────────────────
+    const timeResp = await fetch('https://www.jma.go.jp/bosai/amedas/data/latest_time.txt');
+    if (!timeResp.ok) throw new Error('latest_time: HTTP ' + timeResp.status);
+    const latestTimeStr = (await timeResp.text()).trim();
+    const lt = new Date(latestTimeStr);
+
+    const tk = '' + lt.getFullYear() + pad2(lt.getMonth()+1) + pad2(lt.getDate())
+               + pad2(lt.getHours()) + pad2(lt.getMinutes()) + '00';
+    const mapResp = await fetch(`https://www.jma.go.jp/bosai/amedas/data/map/${tk}.json`);
+    const mapJson = mapResp.ok ? await mapResp.json() : null;
+    const st = mapJson?.[AMEDAS_STATION_CODE] ?? null;
+    if (!st) throw new Error('福山市のアメダスデータが見つかりません');
+
+    const temp      = st.temp             ? st.temp[0]             : null;
+    const humidity  = st.humidity         ? st.humidity[0]         : null;
+    const precip    = st.precipitation10m ? st.precipitation10m[0] : null;
+    const sun10m    = st.sun10m           ? st.sun10m[0]           : null;
+    const windSpeed = st.wind             ? st.wind[0]             : null;
+    const windDir   = st.windDirection    ? st.windDirection[0]    : null;
+
+    // ─── 通信B: 地点専用データ（point API・公式天気記号）────────────
+    // ブロック境界: 00, 03, 06, 09, 12, 15, 18, 21 時（3時間ブロック）
+    // 時刻計算は必ず Date オブジェクトを使用する（手動の日付マイナス計算は禁止）
+    function _makePointUrl(d) {
+      const bh = Math.floor(d.getHours() / 3) * 3;
+      const ds = '' + d.getFullYear() + pad2(d.getMonth()+1) + pad2(d.getDate());
+      return `https://www.jma.go.jp/bosai/amedas/data/point/${AMEDAS_STATION_CODE}/${ds}_${pad2(bh)}.json`;
+    }
+
+    const ptDate = new Date(lt.getTime());
+    let pointJson = await fetch(_makePointUrl(ptDate))
+      .then(r => r.ok ? r.json() : null).catch(() => null);
+
+    // フォールバック: 404またはデータ空の場合は setHours で3時間前ブロックを再計算して取得
+    if (!pointJson || Object.keys(pointJson).length === 0) {
+      ptDate.setHours(ptDate.getHours() - 3);
+      pointJson = await fetch(_makePointUrl(ptDate))
+        .then(r => r.ok ? r.json() : null).catch(() => null);
+    }
+
+    // 過去2時間以内で最も新しい「正時（XX:00:00）」の天気コードを抽出
+    // ※ code=0 は「晴れ」の公式コードのため、null との比較のみ行う（>0 は使わない）
+    const twoHoursAgoMs = lt.getTime() - 2 * 60 * 60 * 1000;
+    let foundWxCode = null;
+    if (pointJson && typeof pointJson === 'object') {
+      const ptKeys = Object.keys(pointJson).sort().reverse();
+      for (const key of ptKeys) {
+        if (key.length < 14) continue;
+        if (key.slice(10, 14) !== '0000') continue;
+        const keyMs = new Date(
+          parseInt(key.slice(0, 4)), parseInt(key.slice(4, 6)) - 1,
+          parseInt(key.slice(6, 8)), parseInt(key.slice(8, 10)), 0, 0
+        ).getTime();
+        if (keyMs < twoHoursAgoMs) break;
+        const code = pointJson[key]?.weather?.[0] ?? null;
+        if (code !== null) { foundWxCode = code; break; }
+      }
+    }
+    console.log(`[WJ] point scan → foundWxCode=${foundWxCode}`);
+
+    // ─── データ合成 → 天気判定 ──────────────────────────────────────
+    const amedasHistory = [
+      { prec10: precip, temp, sun10m },
+      { weather: foundWxCode }
+    ];
+    const result = WeatherJudge.judge(amedasHistory);
+
+    const weatherIcon = _weatherLabelToIcon(result.weather);
+    const obsTime = `${pad2(lt.getHours())}:${pad2(lt.getMinutes())}`;
+    const obsHeader = `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">` +
+                      `📅 ${lt.getFullYear()}/${pad2(lt.getMonth()+1)}/${pad2(lt.getDate())} ${obsTime} 観測 ｜ ` +
+                      `広島県 福山市（アメダス 67401 固定）</div>`;
+
+    // 6) データなし時の特別処理（天気フィールドはセットしない）
+    if (result.weather === 'データなし') {
+      if (temp     !== null) document.getElementById('inp_temperature').value = temp;
+      if (humidity !== null) document.getElementById('inp_humidity').value    = humidity;
+
+      let detail = obsHeader;
+      detail += `<div style="font-size:22px;font-weight:700;margin-bottom:8px">❓ データなし</div>`;
+      detail += `<div style="background:#fff3e0;border:1px solid #ff9800;border-radius:8px;` +
+                `padding:10px 12px;font-size:13px;color:#e65100;margin-bottom:8px">` +
+                `${result.notice}</div>`;
+      detail += `<div class="data-grid" style="margin-top:6px">`;
+      detail += `<div class="data-item"><div class="label">気温</div><div class="value filled">${temp !== null ? temp+'℃' : '--'}</div></div>`;
+      detail += `<div class="data-item"><div class="label">湿度</div><div class="value filled">${humidity !== null ? humidity+'%' : '--'}</div></div>`;
+      detail += `<div class="data-item"><div class="label">降水量(10分)</div><div class="value">${precip !== null ? precip+'mm' : '--'}</div></div>`;
+      detail += `<div class="data-item"><div class="label">日照(10分)</div><div class="value">${sun10m !== null ? sun10m+'分' : '--'}</div></div>`;
+      detail += `</div>`;
+      info.innerHTML = detail;
+      info.classList.add('show');
+      showToast('天気データが欠測しています');
+      btn.disabled = false;
+      btn.innerHTML = '<span>📡</span><span>気象庁データから取得</span>';
+      return;
+    }
+
+    const weatherCode = _weatherLabelToCode(result.weather);
+
+    // 7) フォームに自動入力
+    if (temp     !== null) document.getElementById('inp_temperature').value = temp;
+    if (humidity !== null) document.getElementById('inp_humidity').value    = humidity;
+    document.getElementById('inp_weather').value = weatherCode;
+
+    // 8) 結果表示
+    let detail = obsHeader;
+    detail += `<div style="font-size:22px;font-weight:700;margin-bottom:6px">${weatherIcon} ${result.weather}</div>`;
+    detail += `<div style="margin-bottom:6px">` +
+              `<span style="color:#388e3c;font-size:11px">📊 アメダスからデータ取得</span></div>`;
+    detail += `<div class="data-grid" style="margin-top:6px">`;
+    detail += `<div class="data-item"><div class="label">気温</div><div class="value filled">${temp !== null ? temp+'℃' : '--'}</div></div>`;
+    detail += `<div class="data-item"><div class="label">湿度</div><div class="value filled">${humidity !== null ? humidity+'%' : '--'}</div></div>`;
+    detail += `<div class="data-item"><div class="label">降水量(10分)</div><div class="value${precip > 0 ? ' filled' : ''}">${precip !== null ? precip+'mm' : '--'}</div></div>`;
+    detail += `<div class="data-item"><div class="label">日照(10分)</div><div class="value">${sun10m !== null ? sun10m+'分' : '--'}</div></div>`;
+    if (windSpeed !== null) {
+      const dirs = ['北','北北東','北東','東北東','東','東南東','南東','南南東',
+                    '南','南南西','南西','西南西','西','西北西','北西','北北西'];
+      const dirLabel = (windDir !== null && windDir >= 1 && windDir <= 16) ? dirs[windDir-1] : '';
+      detail += `<div class="data-item wide"><div class="label">風</div><div class="value">${dirLabel} ${windSpeed}m/s</div></div>`;
+    }
+    detail += `</div>`;
+    detail += `<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">` +
+              `降水${precip ?? '--'}mm / 気温${temp ?? '--'}℃ / 日照${sun10m ?? '--'}分` +
+              ` → ${weatherIcon}${result.weather}</div>`;
+
+    info.innerHTML = detail;
+    info.classList.add('show');
+  } catch(e) {
+    info.innerHTML =
+      `✅ 日時はセットしました。<br><br>` +
+      `<b>データを取得できませんでした</b><br>${e.message}<br><br>` +
+      `ネットワーク接続を確認してください。`;
+    info.classList.add('show');
+    showToast('取得できませんでした（日時はセット済み）');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>📡</span><span>気象庁データから取得</span>';
+}
+
+// ============================================================
+// 定型文
+// ============================================================
+function renderQuickPhraseButtons() {
+  const container = document.getElementById('quickPhraseButtons');
+  const phrases = config.phrases || [];
+  // HTML-3: data属性+イベントデリゲーションで XSS 防止
+  container.innerHTML = phrases.map((p, i) =>
+    `<button class="quick-phrase-btn" data-phrase-idx="${i}">💬 ${_esc(p)}</button>`
+  ).join('');
+  container.onclick = function(e) {
+    const btn = e.target.closest('[data-phrase-idx]');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.phraseIdx, 10);
+    if (phrases[idx] != null) appendPhrase(phrases[idx]);
+  };
+}
+
+function appendPhrase(text) {
+  const ta = document.getElementById('inp_special_notes');
+  ta.value = ta.value ? ta.value + '\n' + text : text;
+  _refreshTextareaPrev(ta);
+}
+
+// ============================================================
+// データ収集
+// ============================================================
+function collectFormData() {
+  if (!selectedSchool) { showToast('学校を選択してください'); return null; }
+
+  const school = selectedSchool;
+
+  // 絶縁抵抗
+  const insulation = (school.insulation||[]).map((r, i) => ({
+    row: r.row, panel: r.panel, circuit: r.circuit, voltage: r.voltage,
+    value: document.getElementById(`ins_val_${i}`)?.value || '',
+    judgment: document.getElementById(`ins_jdg_${i}`)?.value || '',
+    remarks: document.getElementById(`ins_rem_${i}`)?.value || '',
+  }));
+
+  // 接地抵抗
+  const grounding = (school.grounding||[]).map((r, i) => ({
+    row: r.row, panel: r.panel, circuit: r.circuit, type: r.type,
+    value: document.getElementById(`gnd_val_${i}`)?.value || '',
+    judgment: document.getElementById(`gnd_jdg_${i}`)?.value || '',
+    remarks: document.getElementById(`gnd_rem_${i}`)?.value || '',
+  }));
+
+  // 漏電遮断器
+  const breaker_test = (school.breaker_test||[]).map((r, i) => ({
+    row: r.row, panel: r.panel, circuit: r.circuit, capacity: r.capacity,
+    content: document.getElementById(`brk_content_${i}`)?.textContent || '',
+    judgment: document.getElementById(`brk_jdg_${i}`)?.value || '',
+    remarks: document.getElementById(`brk_rem_${i}`)?.value || '',
+  }));
+
+  return {
+    id: editMode ? editingRecordId : Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    school_id: school.id,
+    school_name: school.school_name,
+    file_name: school.file_name,
+    sheet_name: school.sheet_name,
+    header: {
+      date: document.getElementById('inp_date').value,
+      time: document.getElementById('inp_time').value,
+      weather: document.getElementById('inp_weather').value,
+      temperature: document.getElementById('inp_temperature').value,
+      humidity: document.getElementById('inp_humidity').value,
+      note: '',
+    },
+    insulation,
+    insulation_cols: school.insulation_cols,
+    grounding,
+    grounding_cols: school.grounding_cols,
+    grounding_method: document.getElementById('inp_grounding_method').value,
+    grounding_method_cell: school.grounding_method_cell,
+    breaker_test,
+    special_notes: document.getElementById('inp_special_notes').value,
+    createdAt: editMode ? (inspections.find(r=>r.id===editingRecordId)||{}).createdAt||new Date().toISOString() : new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// ============================================================
+// 確認・保存
+// ============================================================
+function showConfirm() {
+  const data = collectFormData();
+  if (!data) return;
+  if (!data.header.date) { showToast('日付を入力してください'); return; }
+
+  const wCode = data.header.weather ? `${WEATHER_CODE[data.header.weather]||'?'}(${data.header.weather})` : '--';
+  let html = `<div class="data-grid">`;
+  html += dataCell('学校名', data.school_name, true);
+  html += dataCell('日付', data.header.date);
+  html += dataCell('時刻', data.header.time);
+  html += dataCell('天気', wCode);
+  html += dataCell('温度', data.header.temperature ? data.header.temperature+'℃' : '--');
+  html += dataCell('湿度', data.header.humidity ? data.header.humidity+'%' : '--');
+  html += `</div>`;
+
+  const filledIns = data.insulation.filter(r => r.value).length;
+  const filledGnd = data.grounding.filter(r => r.value).length;
+  const filledBrk = data.breaker_test.filter(r => r.judgment).length;
+  html += `<div style="margin-top:8px;font-size:13px;color:var(--text-secondary)">
+    絶縁抵抗: ${filledIns}/${data.insulation.length}行入力 ｜
+    接地抵抗: ${filledGnd}/${data.grounding.length}行入力 ｜
+    漏電遮断器: ${filledBrk}/${data.breaker_test.length}行入力
+  </div>`;
+
+  // --- 入力済みデータの詳細（テーブル形式・詳細画面と同レイアウト） ---
+  html += _buildFilledDetailHtml('絶縁抵抗',   data.insulation,   'value');
+  html += _buildFilledDetailHtml('接地抵抗',   data.grounding,    'value');
+  if (data.grounding_method && (data.grounding||[]).some(r => (r.value||'').toString().trim() || (r.judgment||'').toString().trim())) {
+    html += `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">測定方式: ${_esc(data.grounding_method)}</div>`;
+  }
+  html += _buildFilledDetailHtml('漏電遮断器', data.breaker_test, 'content');
+
+  if (data.special_notes) {
+    html += `<div style="margin-top:8px;padding:8px;background:#f8f9fa;border-radius:6px;font-size:13px">
+      <span class="text-muted">特記事項:</span> ${_esc(data.special_notes).replace(/\n/g,'<br>')}</div>`;
+  }
+
+  document.getElementById('confirmContent').innerHTML = html;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+
+function dataCell(label, value, wide=false) {
+  const cls = value && value !== '--' ? 'filled' : '';
+  return `<div class="data-item${wide?' wide':''}"><div class="label">${label}</div><div class="value ${cls}">${value||'--'}</div></div>`;
+}
+
+// 入力済み行のみを抽出してテーブル形式で表示（詳細画面と同じレイアウト）
+// valueKey: 'value' (絶縁/接地) または 'content' (漏電遮断器)
+function _buildFilledDetailHtml(title, rows, valueKey) {
+  if (!Array.isArray(rows) || rows.length === 0) return '';
+
+  const filled = rows.filter(r => {
+    const v = (r && r[valueKey] != null) ? String(r[valueKey]).trim() : '';
+    const j = (r && r.judgment != null) ? String(r.judgment).trim() : '';
+    return v !== '' || j !== '';
+  });
+  if (filled.length === 0) return '';
+
+  // 詳細画面と揃えた見出し（アイコン付き）
+  const headingMap = {
+    '絶縁抵抗':   '⚡ 絶縁抵抗測定',
+    '接地抵抗':   '🌍 接地抵抗測定',
+    '漏電遮断器': '🔌 漏電遮断器テスト'
+  };
+  const heading = headingMap[title] || title;
+
+  // 漏電遮断器のみ「確認内容」、他は「測定値[Ω]」
+  const isBreaker = (valueKey === 'content');
+  const valHeader = isBreaker ? '確認内容' : '測定値[Ω]';
+  const valAlign  = isBreaker ? 'left'   : 'right';
+
+  let tbl = `<div style="margin-top:10px;font-weight:600;font-size:13px;color:var(--primary)">`
+          + `${_esc(heading)}（入力済み ${filled.length} 件）</div>`;
+  tbl += `<div style="overflow-x:auto;max-height:40vh;overflow-y:auto">`
+       + `<table class="meas-table" style="font-size:12px">`
+       + `<tr><th>測定回路</th><th>${valHeader}</th><th>判定</th></tr>`;
+  filled.forEach(r => {
+    const circuit = _esc(r.circuit || '');
+    const val = _esc(((r[valueKey] != null) ? String(r[valueKey]) : '').trim() || '--');
+    const jdg = _esc(((r.judgment   != null) ? String(r.judgment)   : '').trim() || '--');
+    tbl += `<tr>`
+         + `<td>${circuit}</td>`
+         + `<td style="text-align:${valAlign}">${val}</td>`
+         + `<td style="text-align:center">${jdg}</td>`
+         + `</tr>`;
+  });
+  tbl += `</table></div>`;
+  return tbl;
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+}
+
+async function saveInspection() {
+  const data = collectFormData();
+  if (!data) return;
+
+  const btn = document.getElementById('btnSaveInspection');
+  if (btn) { btn.disabled=true; btn.textContent='保存中...'; }
+
+  if (editMode) {
+    const idx = inspections.findIndex(r => r.id === editingRecordId);
+    if (idx >= 0) inspections[idx] = data;
+    // When editing, clear sync status fields
+    data.status = null;
+    data.syncAt = null;
+    data.error_msg = null;
+    editMode = false; editingRecordId = null;
+  } else {
+    inspections.unshift(data);
+  }
+  saveInspections();
+  await pushRecordToFirebase(data);
+  closeConfirm();
+  showToast('保存しました ✓');
+  clearForm();
+  if (btn) { btn.disabled=false; btn.textContent='保存する'; }
+
+  // 保存後は履歴タブへ自動切替（保存内容の確認のため）
+  // switchTab('history') 内で renderHistory() / updateHistoryFilter() が走る
+  switchTab('history');
+  // 直近保存レコードが見えるよう履歴の先頭へスクロール
+  try {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    const histTab = document.getElementById('tab-history');
+    if (histTab && typeof histTab.scrollTo === 'function') {
+      histTab.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  } catch(_) { /* no-op */ }
+}
+
+function clearForm() {
+  document.getElementById('inp_date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('inp_time').value = '';
+  document.getElementById('inp_weather').value = '';
+  document.getElementById('inp_temperature').value = '';
+  document.getElementById('inp_humidity').value = '';
+
+  // 特記事項：選択中の学校があれば前回値を placeholder 表示に戻す
+  if (typeof selectedSchool !== 'undefined' && selectedSchool) {
+    setupSpecialNotesPrev(selectedSchool);
+  } else {
+    const ta = document.getElementById('inp_special_notes');
+    if (ta) {
+      ta.value = '';
+      ta.dataset.hasPrev = '';
+      ta.classList.remove('has-prev');
+      ta.placeholder = '特記事項を入力してください...';
+    }
+  }
+  document.getElementById('weatherInfo').classList.remove('show');
+  document.getElementById('schoolList').classList.add('expanded');
+
+  // --- 編集モード関連の状態を必ずリセット（保存後・キャンセル後の共通担保） ---
+  editMode = false;
+  editingRecordId = null;
+  const cancelBtn = document.getElementById('btnCancelEdit');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+}
+
+// ============================================================
+// 編集キャンセル
+// ============================================================
+function cancelEdit() {
+  if (!editMode) return; // 二重押し・誤呼び出し防止
+  if (!confirm('編集内容を破棄して履歴に戻ります。よろしいですか？')) return;
+
+  // 状態リセット（clearForm 内でも担保するが、明示的に先行リセット）
+  editMode = false;
+  editingRecordId = null;
+
+  clearForm();        // フォーム初期化＋キャンセルボタン非表示
+  switchTab('history');
+  showToast('編集をキャンセルしました');
+}
+
+// ============================================================
+// Firebase - pool_inspections（既存システムとは完全分離）
+// ============================================================
+function inspBaseUrl() {
+  const base = _fbBase();
+  return base ? base + `/${FB_NODE_INSPECTIONS}` : null;
+}
+
+async function pushRecordToFirebase(record, _retryCount) {
+  const base = inspBaseUrl();
+  if (!base || !record || !record.id) return;
+  const retryCount = _retryCount || 0;
+  try {
+    await _fbEnsureToken();
+    const resp = await fetch(_fbUrl(base + '/' + record.id + '.json'), {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(record)
+    });
+    if (!resp.ok) {
+      console.warn('pushRecord PUT failed:', resp.status);
+      if (retryCount < 3) {
+        await new Promise(r => setTimeout(r, (retryCount + 1) * 2000));
+        return pushRecordToFirebase(record, retryCount + 1);
+      }
+    }
+  } catch(e) {
+    console.warn('pushRecordToFirebase error:', e);
+    if (retryCount < 3) {
+      await new Promise(r => setTimeout(r, (retryCount + 1) * 2000));
+      return pushRecordToFirebase(record, retryCount + 1);
+    }
+  }
+}
+
+async function sendToExcel(record) {
+  const base = inspBaseUrl();
+  if (!base || !record || !record.id) return;
+  const fullPayload = Object.assign({}, record, {
+    status: 'pending',
+    sentAt: new Date().toISOString()
+  });
+  try {
+    await _fbEnsureToken();
+    const resp = await fetch(_fbUrl(base + '/' + record.id + '.json'), {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(fullPayload)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    // Update local record
+    const idx = inspections.findIndex(r => r.id === record.id);
+    if (idx >= 0) {
+      inspections[idx].status = 'pending';
+      inspections[idx].sentAt = fullPayload.sentAt;
+      saveInspections();
+    }
+    showToast('📡 Excel書込を要求しました');
+    renderHistory();
+    await _silentTriggerPoolPcWrite();
+  } catch(e) {
+    showToast('Excel送信失敗: ' + e.message);
+  }
+}
+
+async function patchRecordOnFirebase(recordId, patchData) {
+  const base = inspBaseUrl();
+  if (!base || !recordId) return;
+  try {
+    await _fbEnsureToken();
+    const resp = await fetch(_fbUrl(base + '/' + recordId + '.json'), {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(patchData)
+    });
+    if (!resp.ok) console.warn('patchRecord failed:', resp.status);
+  } catch(e) { console.warn('patchRecord error:', e); }
+}
+
+async function deleteRecordFromFirebase(recordId) {
+  const base = inspBaseUrl();
+  if (!base || !recordId) return;
+  try {
+    await _fbEnsureToken();
+    await fetch(_fbUrl(base + '/' + recordId + '.json'), { method:'DELETE' });
+  } catch(e) { console.warn('deleteRecord error:', e); }
+}
+
+async function loadInspectionsFromFirebase() {
+  const base = inspBaseUrl();
+  if (!base) return;
+  try {
+    await _fbEnsureToken();
+    const resp = await fetch(_fbUrl(base + '.json'), { signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) return;
+    const remote = await resp.json();
+
+    const localMap = {};
+    inspections.forEach(r => { if (r.id) localMap[r.id] = r; });
+
+    if (remote && typeof remote === 'object') {
+      Object.entries(remote).forEach(([id, rec]) => {
+        if (!rec || typeof rec !== 'object') return;
+        rec.id = id;
+        const local = localMap[id];
+        if (!local) {
+          inspections.push(rec);
+        } else {
+          if (rec.status !== undefined) local.status = rec.status;
+          if (rec.syncAt !== undefined) local.syncAt = rec.syncAt;
+          if (rec.error_msg !== undefined) local.error_msg = rec.error_msg;
+          const localTime  = new Date(local.updatedAt || local.createdAt || 0).getTime();
+          const remoteTime = new Date(rec.updatedAt   || rec.createdAt   || 0).getTime();
+          if (remoteTime >= localTime) Object.assign(local, rec);
+        }
+      });
+    }
+
+    // ローカルにしかないものをFirebaseに送信
+    const remoteIds = (remote && typeof remote === 'object') ? remote : {};
+    for (const rec of inspections) {
+      if (rec.id && !remoteIds[rec.id]) pushRecordToFirebase(rec);
+    }
+
+    inspections.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+    saveInspections();
+    renderHistory();
+    updateHistoryFilter();
+    const remoteCount = (remote && typeof remote === 'object') ? Object.keys(remote).length : 0;
+    console.log('[InspSync] Firebase から同期完了:', remoteCount, '件');
+  } catch(e) { console.warn('loadInspectionsFromFirebase error:', e); }
+}
+
+// SSE for pool_inspections（01_点検システムと同じ方式）
+let _isSyncingInsp = false;
+
+function updatePoolSyncStatus(status) {
+  const map = {
+    synced:     { cls:'synced',     icon:'🟢', text:'リアルタイム同期中' },
+    connecting: { cls:'connecting', icon:'🟡', text:'同期接続中…' },
+    offline:    { cls:'offline',    icon:'🔴', text:'同期オフライン（再接続待ち）' },
+    idle:       { cls:'idle',       icon:'⚪', text:'Firebase未設定' },
+  };
+  const s = map[status] || map.idle;
+  const el = document.getElementById('poolSyncBadge');
+  if (el) el.innerHTML = `<span class="sync-badge ${s.cls}">${s.icon} ${s.text}</span>`;
+}
+
+function startPoolInspSSE() {
+  if (_poolInspSseCtrl) { _poolInspSseCtrl.abort(); _poolInspSseCtrl = null; }
+  if (_poolInspSseReconn) { clearTimeout(_poolInspSseReconn); _poolInspSseReconn = null; }
+
+  const base = inspBaseUrl();
+  if (!base) { updatePoolSyncStatus('idle'); return; }
+
+  updatePoolSyncStatus('connecting');
+  const ctrl = new AbortController();
+  _poolInspSseCtrl = ctrl;
+
+  (async () => {
+    try {
+      await _fbEnsureToken();
+      // cache-busting + cache:'no-store'（01_点検システムと同じ方式）
+      const sseBaseUrl = _fbUrl(base + '.json');
+      const bustUrl = sseBaseUrl + (sseBaseUrl.includes('?') ? '&' : '?') + '_nc=' + Date.now();
+      const resp = await fetch(bustUrl, {
+        headers: {'Accept':'text/event-stream','Cache-Control':'no-cache','Pragma':'no-cache'},
+        signal: ctrl.signal,
+        cache: 'no-store'
+      });
+      if (!resp.ok || !resp.body) {
+        updatePoolSyncStatus('offline');
+        throw new Error('SSE connect failed: ' + resp.status);
+      }
+
+      updatePoolSyncStatus('synced');
+      console.log('[PoolSSE] ✓ 接続成功 — リアルタイム監視開始');
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream:true });
+
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop() || '';
+
+        for (const block of blocks) {
+          // SSEイベントのパース（01_点検システムと同じ方式）
+          let eventType = '', dataStr = '';
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) eventType = line.slice(6).trim();
+            else if (line.startsWith('data:'))  dataStr  = line.slice(5).trim();
+          }
+          if (!dataStr || !['put','patch'].includes(eventType)) continue;
+
+          let payload;
+          try { payload = JSON.parse(dataStr); } catch { continue; }
+
+          const path = payload.path || '';
+          const data = payload.data;
+
+          _isSyncingInsp = true;
+          try {
+            // ── path="/" : 全データスナップショット ──
+            if (path === '/') {
+              if (data === null) {
+                inspections.length = 0;
+                saveInspections();
+              } else if (typeof data === 'object') {
+                Object.entries(data).forEach(([id, rec]) => {
+                  if (!rec || typeof rec !== 'object') return;
+                  rec.id = id;
+                  const idx = inspections.findIndex(r => r.id === id);
+                  if (idx >= 0) {
+                    if (eventType === 'put') inspections[idx] = rec;
+                    else Object.assign(inspections[idx], rec);
+                  } else {
+                    inspections.unshift(rec);
+                  }
+                });
+                inspections.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+                saveInspections();
+              }
+              continue;
+            }
+
+            // ── path="/{recordId}" or "/{recordId}/field" ──
+            const parts = path.replace(/^\//, '').split('/');
+            const recordId = parts[0];
+            if (!recordId) continue;
+
+            // HTML-5: 重複ブロックを統合 — full record + field-level 更新を一元処理
+            const idx = inspections.findIndex(r => r.id === recordId);
+
+            if (parts.length === 1) {
+              // ── Full record update / delete ──
+              if (data === null) {
+                if (idx >= 0) { inspections.splice(idx, 1); saveInspections(); }
+              } else if (typeof data === 'object') {
+                data.id = recordId;
+                if (idx >= 0) {
+                  if (eventType === 'put') inspections[idx] = data;
+                  else Object.assign(inspections[idx], data);
+                } else {
+                  inspections.unshift(data);
+                }
+                saveInspections();
+                // ステータス変化をトーストで通知
+                const rec = inspections.find(r => r.id === recordId) || {};
+                const name = rec.school_name || recordId;
+                const st = rec.status || data.status;
+                if (st === 'success') showToast('✅ Excel書込完了: ' + name);
+                else if (st === 'error') showToast('❌ PC書込失敗: ' + name + (rec.error_msg ? '\n' + rec.error_msg : ''));
+                else if (st === 'skipped') showToast('⏭️ スキップ: ' + name);
+              }
+            } else if (parts.length === 2 && idx >= 0) {
+              // ── Field-level update (e.g., /recordId/status) ──
+              inspections[idx][parts[1]] = data;
+              saveInspections();
+              if (parts[1] === 'status') {
+                const name = inspections[idx].school_name || recordId;
+                if (data === 'success') showToast('✅ Excel書込完了: ' + name);
+                else if (data === 'error') showToast('❌ Excel書込失敗: ' + name);
+                else if (data === 'skipped') showToast('⏭️ スキップ: ' + name);
+              }
+            }
+          } catch(sseErr) { console.error('[PoolSSE] イベント処理エラー:', sseErr); }
+          finally {
+            _isSyncingInsp = false;
+            renderHistory();
+          }
+        }
+      }
+    } catch(e) {
+      if (e.name !== 'AbortError') console.warn('[PoolSSE] エラー:', e);
+    }
+    // 切断時: ステータス更新 + 5秒後に再接続
+    updatePoolSyncStatus('offline');
+    if (!ctrl.signal.aborted) {
+      _poolInspSseReconn = setTimeout(startPoolInspSSE, 5000);
+    }
+  })();
+}
+
+// ============================================================
+// PC書込トリガー（pool_commands に書き込む）
+// 手動ボタンは廃止済み。内部自動同期からのみ呼ばれる。
+// ============================================================
+/** サイレント版: 保存後に自動でPC書込トリガーを送信（01_点検システムと同じ方式） */
+async function _silentTriggerPoolPcWrite() {
+  const base = _fbBase();
+  if (!base) return;
+  try {
+    await _fbEnsureToken();
+    const cmdUrl = _fbUrl(base + `/${FB_NODE_COMMANDS}/run_now.json`);
+    await fetch(cmdUrl, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'run_now', requestedAt: new Date().toISOString(), requestedBy:'phone' })
+    });
+  } catch(e) { console.warn('[Cmd] Silent trigger error:', e); }
+}
+
+// ============================================================
+// タブ切り替え
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  if (tab === 'history') { renderHistory(); updateHistoryFilter(); }
+  if (tab === 'settings') renderSettings();
+}
+
+// ============================================================
+// 履歴
+// ============================================================
+function saveInspections() {
+  localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(inspections));
+}
+
+function updateHistoryFilter() {
+  const sel = document.getElementById('historyFilter');
+  const current = sel.value;
+  const names = [...new Set(inspections.map(r => r.school_name).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">すべての学校</option>' +
+    names.map(n => `<option value="${n}"${n===current?' selected':''}>${n}</option>`).join('');
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const filter = document.getElementById('historyFilter')?.value || '';
+  const filtered = filter ? inspections.filter(r => r.school_name === filter) : inspections;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">📋</div><div>記録がありません</div></div>`;
+    return;
+  }
+
+  const hasFb = !!_fbBase();
+
+  // Calculate summary counts
+  const countSuccess = inspections.filter(r => r.status === 'success').length;
+  const countPending = inspections.filter(r => r.status === 'pending').length;
+  const countSaved = inspections.filter(r => !r.status || r.status === null).length;
+  const countError = inspections.filter(r => r.status === 'error').length;
+  const countSkipped = inspections.filter(r => r.status === 'skipped').length;
+  const summaryLine = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;padding:8px;background:#f5f5f5;border-radius:6px">
+    全${inspections.length}件 ✅書込済:${countSuccess}件 ⏳書込待ち:${countPending}件 💾保存済:${countSaved}件 ❌失敗:${countError}件${countSkipped?` ⏭️スキップ:${countSkipped}件`:''}
+  </div>`;
+
+  let html = filtered.map((rec, i) => {
+    const realIdx = inspections.indexOf(rec);
+    const st = rec.status || '';
+    let statusBadge;
+    if (st === 'success') {
+      statusBadge = `<span class="history-badge" style="background:#c8e6c9;color:#1b5e20">✅ 書込済</span>`;
+    } else if (st === 'error') {
+      statusBadge = `<span class="history-badge" style="background:#ffcdd2;color:#b71c1c">❌ 書込失敗</span>`;
+    } else if (st === 'pending') {
+      statusBadge = `<span class="history-badge" style="background:#bbdefb;color:#0d47a1">⏳ 書込待ち</span>`;
+    } else if (st === 'skipped') {
+      statusBadge = `<span class="history-badge" style="background:var(--skip-bg);color:var(--skip)">⏭️ スキップ</span>`;
+    } else {
+      statusBadge = `<span class="history-badge" style="background:#e3f2fd;color:#1565c0">💾 保存済</span>`;
+    }
+
+    let actionBtns = '';
+    // skipped は処理完了扱いのため「Excel送信」ボタンを表示しない（初期状態に戻るバグを防ぐ）
+    if (hasFb && st !== 'success' && st !== 'pending' && st !== 'skipped') {
+      actionBtns += `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 8px"
+        onclick="event.stopPropagation();sendSingle(${realIdx})">${st==='error'?'🔄再送信':'📥Excel送信'}</button>`;
+    }
+    actionBtns += `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 8px;color:#dc3545;border-color:#dc3545"
+      onclick="event.stopPropagation();deleteSingle(${realIdx})">✕</button>`;
+
+    const insFilledCount = (rec.insulation||[]).filter(r => r.value).length;
+    const gndFilledCount = (rec.grounding||[]).filter(r => r.value).length;
+    const brFilledCount  = (rec.breaker_test||[]).filter(r => r.judgment).length;
+    const summary = `絶縁${insFilledCount}件 接地${gndFilledCount}件 漏電${brFilledCount}件`;
+
+    return `<div class="history-item" style="display:flex;align-items:flex-start;gap:8px">
+      <input type="checkbox" class="history-checkbox" data-idx="${realIdx}"
+        onclick="event.stopPropagation()" style="margin-top:12px;min-width:18px;min-height:18px;cursor:pointer">
+      <div style="flex:1;min-width:0" onclick="showDetail(${realIdx})">
+        <div class="history-header">
+          <span class="history-date">${rec.header?.date||''} ${rec.header?.time||''}</span>
+          <span>${statusBadge}</span>
+        </div>
+        <div class="history-wp">${rec.school_name}</div>
+        <div class="history-summary">${rec.header?.weather||''} ${rec.header?.temperature?rec.header.temperature+'℃':''} ｜ ${summary}</div>
+      </div>
+      <div style="display:flex;gap:4px;align-items:center;padding-top:8px;flex-shrink:0">${actionBtns}</div>
+    </div>`;
+  }).join('');
+
+  list.innerHTML = summaryLine + html;
+  const allCb = document.getElementById('historySelectAll');
+  if (allCb) allCb.checked = false;
+}
+
+function showDetail(idx) {
+  detailIndex = idx;
+  const rec = inspections[idx];
+  if (!rec) return;
+
+  let html = `<div style="font-weight:700;font-size:15px;margin-bottom:8px">${rec.school_name}</div>`;
+  html += `<div class="data-grid">`;
+  const wCode = rec.header?.weather ? `${WEATHER_CODE[rec.header.weather]||'?'}(${rec.header.weather})` : '--';
+  html += dataCell('日付', rec.header?.date);
+  html += dataCell('時刻', rec.header?.time);
+  html += dataCell('天気', wCode);
+  html += dataCell('温度', rec.header?.temperature ? rec.header.temperature+'℃' : '--');
+  html += dataCell('湿度', rec.header?.humidity ? rec.header.humidity+'%' : '--');
+  html += `</div>`;
+
+  if ((rec.insulation||[]).length > 0) {
+    html += `<div style="margin-top:10px;font-weight:600;font-size:13px;color:var(--primary)">⚡ 絶縁抵抗測定</div>`;
+    html += `<div style="overflow-x:auto"><table class="meas-table" style="font-size:12px">
+      <tr><th>測定回路</th><th>測定値[Ω]</th><th>判定</th></tr>`;
+    rec.insulation.forEach(r => {
+      html += `<tr><td>${r.circuit}</td><td style="text-align:right">${r.value||'--'}</td><td style="text-align:center">${r.judgment||'--'}</td></tr>`;
+    });
+    html += `</table></div>`;
+  }
+  if ((rec.grounding||[]).length > 0) {
+    html += `<div style="margin-top:8px;font-weight:600;font-size:13px;color:var(--primary)">🌍 接地抵抗測定</div>`;
+    html += `<div style="overflow-x:auto"><table class="meas-table" style="font-size:12px">
+      <tr><th>測定回路</th><th>測定値[Ω]</th><th>判定</th></tr>`;
+    rec.grounding.forEach(r => {
+      html += `<tr><td>${r.circuit}</td><td style="text-align:right">${r.value||'--'}</td><td style="text-align:center">${r.judgment||'--'}</td></tr>`;
+    });
+    html += `</table></div>`;
+    if (rec.grounding_method) html += `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">測定方式: ${rec.grounding_method}</div>`;
+  }
+  if ((rec.breaker_test||[]).length > 0) {
+    html += `<div style="margin-top:8px;font-weight:600;font-size:13px;color:var(--primary)">🔌 漏電遮断器テスト</div>`;
+    html += `<div style="overflow-x:auto"><table class="meas-table" style="font-size:12px">
+      <tr><th>測定回路</th><th>確認内容</th><th>判定</th></tr>`;
+    rec.breaker_test.forEach(r => {
+      html += `<tr><td>${r.circuit}</td><td>${r.content||'--'}</td><td style="text-align:center">${r.judgment||'--'}</td></tr>`;
+    });
+    html += `</table></div>`;
+  }
+  if (rec.special_notes) {
+    html += `<div style="margin-top:8px;padding:8px;background:#f8f9fa;border-radius:6px;font-size:13px">
+      <span class="text-muted">特記事項:</span><br>${_esc(rec.special_notes).replace(/\n/g,'<br>')}</div>`;
+  }
+
+  const st = rec.status || '';
+  let sentLabel = '';
+  if (st === 'success') {
+    sentLabel = `<span style="color:#1b5e20;font-size:12px">✅ Excel書込完了${rec.syncAt?': '+new Date(rec.syncAt).toLocaleString('ja-JP'):''}</span>`;
+  } else if (st === 'error') {
+    sentLabel = `<span style="color:#b71c1c;font-size:12px">❌ PC書込失敗${rec.error_msg?': '+_esc(rec.error_msg):''} <button class="btn btn-sm btn-outline" style="margin-left:6px;font-size:11px" onclick="closeModal('detailModal');sendSingle(${idx})">🔄再送信</button></span>`;
+  } else if (st === 'pending') {
+    sentLabel = `<span style="color:#0d47a1;font-size:12px">⏳ PC側のExcel書込を待っています...</span>`;
+  } else if (st === 'skipped') {
+    sentLabel = `<span style="color:var(--skip);font-size:12px">⏭️ スキップ済${rec.skip_reason?': '+_esc(rec.skip_reason):''}</span>`;
+  } else if (_fbBase()) {
+    sentLabel = `<span style="color:#1565c0;font-size:12px">💾 クラウド保存済 <button class="btn btn-sm btn-outline" style="margin-left:6px;font-size:11px" onclick="closeModal('detailModal');sendSingle(${idx})">📥Excel送信</button></span>`;
+  }
+  if (sentLabel) html += `<div style="margin-top:8px">${sentLabel}</div>`;
+  html += `<div class="text-sm text-muted mt-12">作成: ${new Date(rec.createdAt||0).toLocaleString('ja-JP')}</div>`;
+
+  document.getElementById('detailContent').innerHTML = html;
+  openModal('detailModal');
+}
+
+function deleteInspection() {
+  if (detailIndex < 0) return;
+  if (!confirm('この記録を削除しますか？')) return;
+  const recId = inspections[detailIndex]?.id;
+  inspections.splice(detailIndex, 1);
+  saveInspections();
+  if (recId) deleteRecordFromFirebase(recId);
+  closeModal('detailModal');
+  renderHistory();
+  showToast('削除しました');
+}
+
+function editInspection() {
+  if (detailIndex < 0) return;
+  const rec = inspections[detailIndex];
+  closeModal('detailModal');
+  editMode = true;
+  editingRecordId = rec.id;
+  switchTab('input');
+  selectSchool(rec.school_id);
+  setTimeout(() => {
+    fillFormFromRecord(rec);
+    // フォーム描画（selectSchool による saveArea 表示）後にキャンセルボタンを表示
+    const cancelBtn = document.getElementById('btnCancelEdit');
+    if (cancelBtn) cancelBtn.style.display = '';
+  }, 200);
+  showToast('編集モード: 修正後に保存してください');
+}
+
+function fillFormFromRecord(rec) {
+  if (rec.header) {
+    document.getElementById('inp_date').value = rec.header.date || '';
+    document.getElementById('inp_time').value = rec.header.time || '';
+    document.getElementById('inp_weather').value = rec.header.weather || '';
+    document.getElementById('inp_temperature').value = rec.header.temperature || '';
+    document.getElementById('inp_humidity').value = rec.header.humidity || '';
+    }
+  if (rec.grounding_method) {
+    document.getElementById('inp_grounding_method').value = rec.grounding_method;
+  }
+  (rec.insulation||[]).forEach((r, i) => {
+    const v = document.getElementById(`ins_val_${i}`); if (v) { v.value = r.value || ''; _refreshCellPrev(v); }
+    const j = document.getElementById(`ins_jdg_${i}`); if (j) { _setJdgValue(j, r.judgment || ''); }
+    const m = document.getElementById(`ins_rem_${i}`); if (m) m.value = r.remarks || '';
+  });
+  (rec.grounding||[]).forEach((r, i) => {
+    const v = document.getElementById(`gnd_val_${i}`); if (v) { v.value = r.value || ''; _refreshCellPrev(v); }
+    const j = document.getElementById(`gnd_jdg_${i}`); if (j) { _setJdgValue(j, r.judgment || ''); }
+    const m = document.getElementById(`gnd_rem_${i}`); if (m) m.value = r.remarks || '';
+  });
+  (rec.breaker_test||[]).forEach((r, i) => {
+    const j = document.getElementById(`brk_jdg_${i}`); if (j) { _setJdgValue(j, r.judgment || ''); }
+    const m = document.getElementById(`brk_rem_${i}`); if (m) m.value = r.remarks || '';
+  });
+  {
+    const ta = document.getElementById('inp_special_notes');
+    ta.value = rec.special_notes || '';
+    _refreshTextareaPrev(ta);
+  }
+}
+// セル背景(has-prev)の動的切替え：値があれば外し、空なら(前回値あり時)戻す
+function _refreshCellPrev(el) {
+  if (!el) return;
+  const td = el.closest ? el.closest('td') : null;
+  if (!td) return;
+  const hasPrev = el.dataset && el.dataset.hasPrev === '1';
+  if (hasPrev && !el.value) td.classList.add('has-prev');
+  else td.classList.remove('has-prev');
+}
+// 判定セレクトの背景・前回値表示を切替え
+// - 値が入っていれば has-prev / showing-prev を外して白に
+// - 空なら（前回値あり時）黄色＋前回値オプションを選択状態に戻す
+function _refreshJdgPrev(sel) {
+  if (!sel) return;
+  const td = sel.closest ? sel.closest('td') : null;
+  if (!td) return;
+  const hasPrev = sel.dataset && sel.dataset.hasPrev === '1';
+  if (hasPrev && !sel.value) {
+    td.classList.add('has-prev');
+    sel.classList.add('showing-prev');
+    const hiddenOpt = sel.querySelector('option.prev-disp');
+    if (hiddenOpt) hiddenOpt.selected = true;
+  } else {
+    td.classList.remove('has-prev');
+    sel.classList.remove('showing-prev');
+  }
+}
+// 特記事項 textarea：前回値を placeholder 表示する初期化
+// - 同じ school_id の status==='success' レコードを新しい順に走査し
+//   special_notes が非空の最初の 1 件を採用する（A案）
+// - 直近レコードが空送信でも、それより前に入力した値があればそれを呼び戻す
+//   ※ pool_writer.py は空 special_notes を Excel に書き込まない（前回値温存）ため、
+//     アプリの前回値表示を Excel の実体と一致させる目的で遡って探索する。
+// - 値があれば placeholder にセット + has-prev（黄色背景） + data-has-prev="1"
+// - 値が無ければデフォルト placeholder に戻し has-prev / data-has-prev を外す
+// 常に value="" で開始（保存データは未上書き＝前回値温存ルールのまま）
+function setupSpecialNotesPrev(school) {
+  const ta = document.getElementById('inp_special_notes');
+  if (!ta) return;
+  let prev = '';
+  if (school && Array.isArray(inspections) && inspections.length) {
+    // status==='success' かつ special_notes が非空のレコードのみ抽出
+    const list = inspections.filter(r =>
+      r && r.school_id === school.id && r.status === 'success'
+        && r.special_notes && String(r.special_notes).trim()
+    );
+    if (list.length) {
+      // 新しい順（updatedAt → createdAt の降順）で先頭を採用
+      list.sort((a, b) =>
+        new Date(b.updatedAt || b.createdAt || 0) -
+        new Date(a.updatedAt || a.createdAt || 0)
+      );
+      prev = String(list[0].special_notes);
+    }
+  }
+  ta.value = '';
+  if (prev.trim()) {
+    ta.placeholder = prev;
+    ta.dataset.hasPrev = '1';
+    ta.classList.add('has-prev');
+  } else {
+    ta.placeholder = '特記事項を入力してください...';
+    ta.dataset.hasPrev = '';
+    ta.classList.remove('has-prev');
+  }
+}
+// textarea の背景(has-prev)の動的切替え：入力があれば白に、空なら(前回値あり時)黄色に戻す
+function _refreshTextareaPrev(el) {
+  if (!el) return;
+  const hasPrev = el.dataset && el.dataset.hasPrev === '1';
+  if (hasPrev && !el.value) el.classList.add('has-prev');
+  else el.classList.remove('has-prev');
+}
+// 判定値をプログラム的にセット（fillFormFromRecord 用）
+// - 値あり：該当オプションを選択
+// - 値なし：前回値オプション（あれば）を選択、なければ通常の空オプションを選択
+function _setJdgValue(sel, val) {
+  if (!sel) return;
+  if (val) {
+    sel.value = val;
+  } else {
+    const hiddenOpt = sel.querySelector('option.prev-disp');
+    if (hiddenOpt) hiddenOpt.selected = true;
+    else sel.value = '';
+  }
+  _refreshJdgPrev(sel);
+}
+
+// ===== 一括操作 =====
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.history-checkbox').forEach(cb => cb.checked = checked);
+}
+
+function getSelectedIndices() {
+  const indices = [];
+  document.querySelectorAll('.history-checkbox:checked').forEach(cb => {
+    indices.push(parseInt(cb.dataset.idx));
+  });
+  return indices;
+}
+
+async function sendSingle(idx) {
+  const rec = inspections[idx];
+  if (!rec) return;
+  await sendToExcel(rec);
+}
+
+function deleteSingle(idx) {
+  const rec = inspections[idx];
+  if (!rec) return;
+  if (!confirm(`${rec.school_name} (${rec.header?.date||''}) を削除しますか？`)) return;
+  const recId = rec.id;
+  inspections.splice(idx, 1);
+  saveInspections();
+  deleteRecordFromFirebase(recId);
+  renderHistory();
+  showToast('削除しました');
+}
+
+async function sendSelectedToFirebase() {
+  if (!_fbBase()) { showToast('Firebase URLが設定されていません'); return; }
+  const indices = getSelectedIndices();
+  if (indices.length === 0) { showToast('送信するデータを選択してください'); return; }
+  showToast(`${indices.length}件を送信中...`);
+  for (const idx of indices) {
+    const rec = inspections[idx];
+    if (rec && rec.status !== 'success' && rec.status !== 'pending' && rec.status !== 'skipped') {
+      await sendToExcel(rec);
+    }
+  }
+  renderHistory();
+  showToast(`${indices.length}件を送信しました`);
+}
+
+async function sendAllUnsent() {
+  if (!_fbBase()) { showToast('Firebase URLが設定されていません'); return; }
+  const unsent = inspections.filter(r => r.status !== 'success' && r.status !== 'pending' && r.status !== 'skipped');
+  if (unsent.length === 0) { showToast('送信対象のデータはありません'); return; }
+  if (!confirm(`${unsent.length}件のExcel書込を要求しますか？`)) return;
+  showToast(`${unsent.length}件を送信中...`);
+  let ok = 0, ng = 0;
+  for (const rec of unsent) {
+    try {
+      await sendToExcel(rec);
+      ok++;
+    } catch(e) { ng++; }
+  }
+  showToast(`送信完了: 成功${ok}件${ng > 0 ? ' / 失敗' + ng + '件' : ''}`);
+  renderHistory();
+}
+
+function deleteSelected() {
+  const indices = getSelectedIndices();
+  if (indices.length === 0) { showToast('削除するデータを選択してください'); return; }
+  if (!confirm(`選択した ${indices.length}件を削除しますか？この操作は取り消せません。`)) return;
+  const deleteIds = indices.map(idx => inspections[idx]?.id).filter(Boolean);
+  indices.sort((a,b) => b-a).forEach(idx => inspections.splice(idx, 1));
+  saveInspections();
+  deleteIds.forEach(id => deleteRecordFromFirebase(id));
+  renderHistory();
+  showToast(`${indices.length}件を削除しました`);
+}
+
+// ============================================================
+// バックアップ / 復元
+// ============================================================
+function backupHistory() {
+  if (inspections.length === 0) { showToast('バックアップするデータがありません'); return; }
+  const data = JSON.stringify(inspections, null, 2);
+  const blob = new Blob([data], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pool_inspection_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  showToast('バックアップを保存しました（' + inspections.length + '件）');
+}
+
+function restoreHistory(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) { showToast('無効なファイル形式です'); return; }
+      const existingIds = new Set(inspections.map(r => r.id));
+      let added = 0;
+      data.forEach(rec => {
+        if (rec.id && !existingIds.has(rec.id)) {
+          inspections.push(rec); existingIds.add(rec.id); added++;
+        }
+      });
+      saveInspections(); renderHistory(); updateHistoryFilter();
+      showToast('復元完了: ' + added + '件追加（重複 ' + (data.length-added) + '件スキップ）');
+    } catch(err) { showToast('ファイルの読み込みに失敗しました'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// ============================================================
+// 全データ JSON エクスポート（バックアップ用）
+// ============================================================
+function exportAllData() {
+  const data = JSON.stringify({ config, inspections }, null, 2);
+  const blob = new Blob([data], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pool_all_data_' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  showToast('全データをエクスポートしました');
+}
+
+// ============================================================
+// 設定
+// ============================================================
+function renderSettings() {
+  const fbUrl  = document.getElementById('settingFirebaseUrl');
+  const fbKey  = document.getElementById('settingFirebaseApiKey');
+  if (fbUrl)  fbUrl.value  = config.firebaseUrl      || '';
+  if (fbKey)  fbKey.value  = config.firebaseApiKey   || '';
+  // email/password input は普段 DOM に存在しない (Bitwarden Autofill対策)。
+  // コンテナを初期状態（編集ボタンのみ）にする。
+  if (typeof hideFbCredsEditor === 'function') hideFbCredsEditor();
+  // showFbCredsEditor() で挿入された input がもし残っていれば、設定値で上書き
+  const fbMail = document.getElementById('settingFirebaseEmail');
+  const fbPass = document.getElementById('settingFirebasePassword');
+  if (fbMail) fbMail.value = config.firebaseEmail    || '';
+  if (fbPass) fbPass.value = config.firebasePassword || '';
+
+  // Firebase 設定カードの初期開閉：未設定なら開く、設定済なら閉じる
+  // （ユーザの明示操作後はlocalStorageの状態を尊重）
+  const fbCard = document.getElementById('firebaseSettingsCard');
+  if (fbCard) {
+    const userPref = localStorage.getItem('firebaseCardOpen');
+    if (userPref !== null) {
+      fbCard.open = (userPref === '1');
+    } else {
+      const hasConfig = !!(config.firebaseUrl || config.firebaseApiKey || config.firebaseEmail);
+      fbCard.open = !hasConfig;
+    }
+    if (!fbCard._toggleBound) {
+      fbCard.addEventListener('toggle', () => {
+        localStorage.setItem('firebaseCardOpen', fbCard.open ? '1' : '0');
+      });
+      fbCard._toggleBound = true;
+    }
+  }
+
+  renderPhraseList();
+  updateMappingStatus();
+  updateSyncStatus(_fbBase() ? 'synced' : 'idle');
+}
+
+function saveFirebaseSettings() {
+  // email/password input は遅延ロード (showFbCredsEditor) 時のみ DOM 存在。
+  // 編集中ならその値を、未編集なら既存 config を維持する。
+  const urlEl  = document.getElementById('settingFirebaseUrl');
+  const keyEl  = document.getElementById('settingFirebaseApiKey');
+  const mailEl = document.getElementById('settingFirebaseEmail');
+  const passEl = document.getElementById('settingFirebasePassword');
+  if (urlEl)  config.firebaseUrl      = urlEl.value.trim();
+  if (keyEl)  config.firebaseApiKey   = keyEl.value.trim();
+  if (mailEl) config.firebaseEmail    = mailEl.value.trim();
+  if (passEl) config.firebasePassword = passEl.value.trim();
+  // 認証トークンをリセット（新しい認証情報で再取得させる）
+  _fbToken = null; _fbRefreshToken = null; _fbTokenExpiry = 0;
+  saveConfig();
+  showToast('設定を保存しました');
+
+  // 保存後は input を DOM から外して Bitwarden 検出を回避
+  if (typeof hideFbCredsEditor === 'function') hideFbCredsEditor();
+
+  // 保存後はカードを自動的に折りたたむ（パスワードマネージャ抑止）
+  const fbCard = document.getElementById('firebaseSettingsCard');
+  if (fbCard) {
+    fbCard.open = false;
+    localStorage.setItem('firebaseCardOpen', '0');
+  }
+
+  // Firebase 同期を再開（config SSE・点検 SSE両方を再接続）
+  if (_fbBase()) {
+    _fbEnsureToken().finally(() => {
+      _loadConfigFromFirebase().then(() => startConfigSSE());
+      loadInspectionsFromFirebase().then(() => startPoolInspSSE());
+      loadMappingData();
+    });
+  }
+}
+
+// ── Firebase認証情報の遅延ロード (Bitwarden Autofill干渉対策) ──
+//   普段は DOM に email/password input を存在させない。ユーザーが
+//   showFbCredsEditor() を呼ぶと初めて input が生成される。
+//   保存・キャンセル・メモを開いた時に hideFbCredsEditor() で確実に
+//   input を DOM から除去する。これで Bitwarden 等の Autofill サービスが
+//   このページを「認証ページ」と判定する根拠を取り除く。
+function showFbCredsEditor() {
+  var ctn = document.getElementById('fbCredsContainer');
+  if (!ctn) return;
+  var emailEsc = (config.firebaseEmail    || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  var pwEsc    = (config.firebasePassword || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  ctn.innerHTML =
+      '<div class="form-group">'
+    +   '<label class="form-label">📧 メールアドレス（Firebase Authentication）</label>'
+    +   '<input type="text" class="form-input" id="settingFirebaseEmail"'
+    +          ' value="' + emailEsc + '"'
+    +          ' placeholder="your@email.com"'
+    +          ' autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
+    +          ' data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other"'
+    +          ' style="font-size:12px">'
+    + '</div>'
+    + '<div class="form-group">'
+    +   '<label class="form-label">🔒 パスワード（Firebase Authentication）</label>'
+    +   '<input type="text" class="form-input" id="settingFirebasePassword"'
+    +          ' value="' + pwEsc + '"'
+    +          ' placeholder="パスワードを入力"'
+    +          ' autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
+    +          ' data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other"'
+    +          ' style="font-size:12px;-webkit-text-security:disc;text-security:disc;">'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;margin-bottom:8px">'
+    +   '<button class="btn btn-outline" type="button" style="flex:1" onclick="hideFbCredsEditor()">キャンセル</button>'
+    + '</div>';
+}
+
+function hideFbCredsEditor() {
+  var ctn = document.getElementById('fbCredsContainer');
+  if (!ctn) return;
+  var isSet = !!((config.firebaseEmail || '').trim() && (config.firebasePassword || '').trim());
+  ctn.innerHTML =
+      '<button class="btn btn-outline" type="button" style="width:100%;font-size:13px" onclick="showFbCredsEditor()">'
+    +   '🔒 認証情報を編集'
+    + '</button>'
+    + '<div style="font-size:11px;color:var(--text-secondary);margin-top:4px">'
+    +   '保存済み: <span id="fbCredsStatus">' + (isSet ? '設定あり ✓' : '未設定') + '</span>'
+    + '</div>';
+}
+
+async function testFirebaseConnection() {
+  const resEl = document.getElementById('firebaseTestResult');
+  // email/password input は遅延ロードのため、編集中なら input、そうでなければ config から取得
+  const urlEl  = document.getElementById('settingFirebaseUrl');
+  const keyEl  = document.getElementById('settingFirebaseApiKey');
+  const mailEl = document.getElementById('settingFirebaseEmail');
+  const passEl = document.getElementById('settingFirebasePassword');
+  const url    = (urlEl  ? urlEl.value  : (config.firebaseUrl      || '')).trim();
+  const apiKey = (keyEl  ? keyEl.value  : (config.firebaseApiKey   || '')).trim();
+  const email  = (mailEl ? mailEl.value : (config.firebaseEmail    || '')).trim();
+  const pass   = (passEl ? passEl.value : (config.firebasePassword || '')).trim();
+
+  if (!url) { resEl.textContent = '❌ Firebase URL を入力してください'; resEl.style.color='#b71c1c'; return; }
+  if (!email || !pass) { resEl.textContent = '❌ メール/パスワードが未保存です。先に「認証情報を編集」して保存してください'; resEl.style.color='#b71c1c'; return; }
+  resEl.textContent = '接続テスト中...'; resEl.style.color = '#e65100';
+
+  // HTML-8: try/finally で確実に復元 + トークン状態も保存/復元
+  const prevCfg = { ...config };
+  const prevToken = _fbToken, prevRefresh = _fbRefreshToken, prevExpiry = _fbTokenExpiry;
+  config.firebaseApiKey = apiKey; config.firebaseEmail = email; config.firebasePassword = pass;
+  _fbToken = null; _fbRefreshToken = null; _fbTokenExpiry = 0;
+
+  try {
+    await _fbEnsureToken();
+    const testUrl = _fbUrl(url.replace(/\/$/, '') + `/${FB_NODE_INSPECTIONS}.json?shallow=true`);
+    const resp = await fetch(testUrl, { signal: AbortSignal.timeout(8000) });
+    if (resp.ok || resp.status === 404) {
+      resEl.textContent = '✅ 接続成功！Firebase と正常に通信できます';
+      resEl.style.color = '#1b5e20';
+    } else {
+      resEl.textContent = `❌ HTTP ${resp.status}: 接続できません`;
+      resEl.style.color = '#b71c1c';
+    }
+  } catch(e) {
+    resEl.textContent = '❌ 接続失敗: ' + e.message;
+    resEl.style.color = '#b71c1c';
+  } finally {
+    config.firebaseApiKey = prevCfg.firebaseApiKey;
+    config.firebaseEmail  = prevCfg.firebaseEmail;
+    config.firebasePassword = prevCfg.firebasePassword;
+    _fbToken = prevToken; _fbRefreshToken = prevRefresh; _fbTokenExpiry = prevExpiry;
+  }
+}
+
+function updateSyncStatus(state) {
+  const el = document.getElementById('configSyncStatus');
+  if (!el) return;
+  const map = {
+    synced:     { cls:'synced',     icon:'🟢', text:'Firebase 接続済' },
+    connecting: { cls:'connecting', icon:'🟡', text:'接続中...' },
+    offline:    { cls:'offline',    icon:'🔴', text:'オフライン' },
+    idle:       { cls:'idle',       icon:'⚪', text:'Firebase 未設定' },
+  };
+  const s = map[state] || map.idle;
+  el.innerHTML = `<span class="sync-badge ${s.cls}">${s.icon} ${s.text}</span>`;
+}
+
+// ===== 定型文管理 =====
+function renderPhraseList() {
+  const list = document.getElementById('phraseList');
+  const phrases = config.phrases || [];
+  list.innerHTML = phrases.map((p, i) =>
+    `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">
+      <span style="flex:1;font-size:13px">${_esc(p)}</span>
+      <button class="btn btn-sm btn-danger" onclick="deletePhrase(${i})" style="padding:3px 8px">✕</button>
+    </div>`
+  ).join('') || '<div style="color:var(--text-secondary);font-size:13px">定型文がありません</div>';
+}
+
+function addPhrase() {
+  const inp = document.getElementById('newPhraseInput');
+  const val = inp.value.trim();
+  if (!val) return;
+  if (!config.phrases) config.phrases = [];
+  config.phrases.push(val);
+  inp.value = '';
+  saveConfig();
+  renderPhraseList();
+  renderQuickPhraseButtons();
+  showToast('定型文を追加しました');
+}
+
+function deletePhrase(idx) {
+  if (!config.phrases) return;
+  config.phrases.splice(idx, 1);
+  saveConfig();
+  renderPhraseList();
+  renderQuickPhraseButtons();
+}
+
+// ===== Config 保存/エクスポート =====
+function saveConfig() {
+  localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+  // Firebaseにも同期（デバウンス1秒）
+  _schedulConfigPush();
+}
+
+function _schedulConfigPush() {
+  clearTimeout(_configPushTimer);
+  _configPushTimer = setTimeout(_pushConfigToFirebase, 1000);
+}
+
+async function _pushConfigToFirebase() {
+  const base = _fbBase();
+  if (!base) return;
+  // Firebase認証情報はFirebaseに保存しない（各デバイスで個別設定）
+  const syncData = {};
+  if (config.poolTabAssign) syncData.poolTabAssign = config.poolTabAssign;
+  // poolTabNames が内部キー名。Firebase上は poolGroupTabNames として保存
+  if (config.poolTabNames && config.poolTabNames.length > 0) syncData.poolGroupTabNames = config.poolTabNames;
+  if (config.phrases) syncData.phrases = config.phrases;
+  if (config.poolSchoolOrder && config.poolSchoolOrder.length > 0) syncData.poolSchoolOrder = config.poolSchoolOrder;
+  syncData._updatedAt = new Date().toISOString();
+  syncData._updatedBy = navigator.userAgent.slice(0, 50);
+  try {
+    _isSyncingConfig = true;
+    await _fbEnsureToken();
+    const resp = await fetch(_fbUrl(base + `/${FB_NODE_CONFIG}.json`), {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(syncData)
+    });
+    if (!resp.ok) console.warn('[ConfigSync] PUT failed:', resp.status);
+    else console.log('[ConfigSync] Config をFirebaseに同期しました');
+  } catch(e) { console.warn('[ConfigSync] Push error:', e); }
+  finally { _isSyncingConfig = false; }
+}
+
+async function _loadConfigFromFirebase() {
+  const base = _fbBase();
+  if (!base) return;
+  try {
+    await _fbEnsureToken();
+    const resp = await fetch(_fbUrl(base + `/${FB_NODE_CONFIG}.json`), { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) return;
+    const remote = await resp.json();
+    if (!remote || typeof remote !== 'object') return;
+    _applyRemoteConfig(remote);
+    console.log('[ConfigSync] Firebase からConfig読み込み完了');
+  } catch(e) { console.warn('[ConfigSync] Load error:', e); }
+}
+
+function _applyRemoteConfig(remote) {
+  let changed = false;
+  if (remote.poolTabAssign !== undefined) {
+    config.poolTabAssign = remote.poolTabAssign;
+    changed = true;
+  }
+  if (remote.poolGroupTabNames !== undefined) {
+    // Firebase上は poolGroupTabNames、内部では poolTabNames として保持
+    config.poolTabNames = remote.poolGroupTabNames;
+    changed = true;
+  }
+  if (remote.phrases !== undefined) {
+    config.phrases = remote.phrases;
+    changed = true;
+  }
+  if (remote.poolSchoolOrder !== undefined) {
+    config.poolSchoolOrder = remote.poolSchoolOrder;
+    changed = true;
+  }
+  if (changed) {
+    localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+    renderSchoolList();
+    renderSettings();
+  }
+}
+
+function startConfigSSE() {
+  if (_configSseCtrl) { _configSseCtrl.abort(); _configSseCtrl = null; }
+  if (_configSseReconn) { clearTimeout(_configSseReconn); _configSseReconn = null; }
+
+  const base = _fbBase();
+  if (!base) return;
+
+  const ctrl = new AbortController();
+  _configSseCtrl = ctrl;
+
+  (async () => {
+    try {
+      await _fbEnsureToken();
+      const sseUrl = _fbUrl(base + `/${FB_NODE_CONFIG}.json`);
+      const bustUrl = sseUrl + (sseUrl.includes('?') ? '&' : '?') + '_nc=' + Date.now();
+      const resp = await fetch(bustUrl, {
+        headers: {'Accept':'text/event-stream','Cache-Control':'no-cache','Pragma':'no-cache'},
+        signal: ctrl.signal,
+        cache: 'no-store'
+      });
+      if (!resp.ok || !resp.body) throw new Error('Config SSE connect failed');
+      console.log('[ConfigSSE] ✓ 設定リアルタイム同期開始');
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop() || '';
+
+        for (const block of blocks) {
+          let eventType = '', dataStr = '';
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) eventType = line.slice(6).trim();
+            else if (line.startsWith('data:'))  dataStr  = line.slice(5).trim();
+          }
+          if (!dataStr || !['put','patch'].includes(eventType)) continue;
+          if (_isSyncingConfig) continue; // 自分の書き込みエコーを無視
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.path === '/' && parsed.data && typeof parsed.data === 'object') {
+              _applyRemoteConfig(parsed.data);
+              console.log('[ConfigSSE] リモートからConfig更新を受信');
+            }
+          } catch(e) { /* ignore malformed */ }
+        }
+      }
+    } catch(e) {
+      if (e.name !== 'AbortError') console.warn('[ConfigSSE] エラー:', e);
+    }
+    if (!ctrl.signal.aborted) {
+      _configSseReconn = setTimeout(startConfigSSE, 5000);
+    }
+  })();
+}
+
+function exportConfig() {
+  const data = JSON.stringify(config, null, 2);
+  const blob = new Blob([data], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pool_config_' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function importConfig(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      config = Object.assign(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), data);
+      saveConfig();
+      renderSettings();
+      showToast('設定をインポートしました');
+    } catch { showToast('設定のインポートに失敗しました'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetAllData() {
+  if (!confirm('全データを削除しますか？この操作は取り消せません。')) return;
+  if (!confirm('本当によろしいですか？')) return;
+  config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  inspections = [];
+  localStorage.removeItem(STORAGE_KEY_CONFIG);
+  localStorage.removeItem(STORAGE_KEY_RECORDS);
+  renderSettings(); renderHistory(); renderSchoolList();
+  showToast('全データをリセットしました');
+}
+
+// ============================================================
+// Modal / Toast / Misc
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ============================================================
+// MEMO FEATURE
+// ============================================================
+/** メモの保存先: config.schoolMemos = { "学校ID": "メモ文" } */
+function _getSchoolMemo(schoolId) {
+  return (config.schoolMemos || {})[schoolId] || '';
+}
+
+/** メモボタンの表示状態とインラインプレビューを更新 */
+function updateMemoBtn() {
+  var btn = document.getElementById('memoBtn');
+  var preview = document.getElementById('selectedSchoolMemoPreview');
+  if (!btn) return;
+
+  // 早期リターン共通処理
+  function clearAll() {
+    btn.className = 'wp-btn-memo empty';
+    if (preview) preview.innerHTML = '';
+  }
+  if (!selectedSchool) { clearAll(); return; }
+  var memoText = _getSchoolMemo(selectedSchool.id).trim();
+  var hasMemo = memoText.length > 0;
+
+  // メモボタンの色
+  btn.className = 'wp-btn-memo ' + (hasMemo ? 'has-memo' : 'empty');
+
+  // プレビュー領域: メモがあるときだけスニペットを描画（line-clampで2行制限）
+  if (preview) {
+    if (hasMemo) {
+      // HTMLエスケープ（&, <, >, ", '）
+      var esc = memoText
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      preview.innerHTML =
+        '<div class="wp-memo-preview" onclick="openMemoModal()">' +
+          '<span class="wp-memo-icon">📝</span>' +
+          '<span class="wp-memo-snippet">' + esc + '</span>' +
+          '<button type="button" class="wp-memo-toggle" onclick="event.stopPropagation();openMemoModal()">∨ 詳細</button>' +
+        '</div>';
+    } else {
+      preview.innerHTML = '';
+    }
+  }
+}
+
+/** メモモーダルを開く */
+function openMemoModal() {
+  // 防御的: メモを開く瞬間、Firebase認証inputがDOMに残っていれば確実に外す
+  // (Bitwarden Autofill が「保存しますか?」を発火する根拠を取り除く)
+  if (typeof hideFbCredsEditor === 'function') hideFbCredsEditor();
+
+  if (!selectedSchool) return;
+  var badge = document.getElementById('memoSiteBadge');
+  if (badge) badge.textContent = selectedSchool.school_name || '';
+
+  var ta = document.getElementById('memoTextarea');
+  if (ta) {
+    ta.value = _getSchoolMemo(selectedSchool.id);
+    updateMemoCharCount();
+  }
+
+  document.getElementById('memoOverlay').classList.add('show');
+  // Step1: 背景スクロールロック
+  var content = document.querySelector('.content');
+  if (content) content.style.overflow = 'hidden';
+}
+
+function handleMemoOverlayClick(e) {
+  if (e.target === document.getElementById('memoOverlay')) closeMemoModal();
+}
+
+/** メモモーダルを閉じる */
+function closeMemoModal() {
+  var ta = document.getElementById('memoTextarea');
+  if (ta) ta.blur();
+  setTimeout(function() {
+    document.getElementById('memoOverlay').classList.remove('show');
+    var content = document.querySelector('.content');
+    if (content) content.style.overflow = '';
+  }, 50);
+}
+
+function updateMemoCharCount() {
+  var ta = document.getElementById('memoTextarea');
+  var cnt = document.getElementById('memoCharCount');
+  if (ta && cnt) cnt.textContent = ta.value.length;
+}
+
+/** メモを保存して閉じる */
+function saveMemo() {
+  if (!selectedSchool) { closeMemoModal(); return; }
+  if (!config.schoolMemos) config.schoolMemos = {};
+  var ta = document.getElementById('memoTextarea');
+  config.schoolMemos[selectedSchool.id] = ta ? ta.value : '';
+  saveConfig();
+  updateMemoBtn();
+  closeMemoModal();
+  showToast('📝 メモを保存しました');
+}
+
+// visualViewport でキーボード出現時にモーダル height を追従
+(function setupMemoViewport() {
+  function syncMemoHeight() {
+    var modal = document.getElementById('memoModal');
+    if (!modal) return;
+    var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    var h = Math.max(vh * 0.85, 200) + 'px';
+    modal.style.height = h;
+    modal.style.maxHeight = h;
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncMemoHeight);
+  }
+  window.addEventListener('resize', syncMemoHeight);
+  document.addEventListener('DOMContentLoaded', function() {
+    var overlay = document.getElementById('memoOverlay');
+    if (overlay) {
+      overlay.addEventListener('touchmove', function(e) {
+        if (!e.target.closest('.memo-modal')) e.preventDefault();
+      }, { passive: false });
+    }
+    syncMemoHeight();
+  });
+})();
+
+let _toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// START
+// ============================================================
+window.addEventListener('DOMContentLoaded', init);
+
+// ── フォアグラウンド復帰 / オンライン復帰時にFirebase再同期 ──
+// HTML-7: デバウンスで多重再接続を防止
+let _resumeSyncTimer = null;
+function _debouncedResumeSync(reason) {
+  if (_resumeSyncTimer) clearTimeout(_resumeSyncTimer);
+  _resumeSyncTimer = setTimeout(() => {
+    _resumeSyncTimer = null;
+    if (!_fbBase()) return;
+    console.debug('[Sync]', reason, '→ 再同期');
+    _fbEnsureToken().then(() => {
+      _loadConfigFromFirebase().then(() => startConfigSSE());
+      loadInspectionsFromFirebase();
+      startPoolInspSSE();
+    });
+  }, 2000);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _debouncedResumeSync('フォアグラウンド復帰');
+});
+window.addEventListener('online', () => {
+  _debouncedResumeSync('オンライン復帰');
+});
+
+// ── 定期的な再同期（5分おき） ──
+// HTML-10: console.debug に変更 + SSE接続中はスキップ
+setInterval(() => {
+  if (document.visibilityState === 'visible' && _fbBase()) {
+    if (_poolInspSseCtrl) { console.debug('[Sync] SSE接続中のため定期再同期スキップ'); return; }
+    console.debug('[Sync] 定期再同期');
+    loadInspectionsFromFirebase();
+  }
+}, 5 * 60 * 1000);
+
+// ============================================================
+// 学校リスト ドラッグ&ドロップ並び替え（スマホ長押し＋PC マウス対応）
+// ============================================================
+const _ds = {
+  active: false, activated: false,
+  srcEl: null, srcId: null,
+  ghostEl: null,
+  startX: 0, startY: 0,
+  currentTarget: null, isBefore: false,
+  longPressTimer: null,
+  scrollRaf: null, scrollSpeed: 0, scrollContainer: null,  // オートスクロール用
+};
+
+// ── オートスクロール定数 ──
+const _SCROLL_ZONE = 60;  // スクロール発動しきい値 (px)：スクロール対象要素の端から
+const _SCROLL_MAX  = 14;  // 1フレームあたり最大移動量 (px) ≈ 840px/s @60fps
+
+/**
+ * ドラッグ中の clientY から、スクロール対象要素と速度を決定する。
+ *
+ * スクロール対象の優先順位：
+ *   1. #schoolList（= .wp-list）→ ドラッグアイテムが属する直接の overflow-y:auto 要素
+ *   2. .content               → ページ全体の overflow-y:auto 要素（フォールバック）
+ *
+ * 判定座標は「対象要素の getBoundingClientRect() からの相対距離」で行う。
+ * window.innerHeight 基準にしてしまうと、要素が画面中段にある場合に発動しない。
+ */
+function _updateAutoScroll(clientY) {
+  // ① スクロール対象を決定
+  const primaryEl   = document.getElementById('schoolList');
+  const fallbackEl  = document.querySelector('.content');
+  const container   = primaryEl || fallbackEl;
+  if (!container) { _ds.scrollSpeed = 0; return; }
+
+  const rect = container.getBoundingClientRect();
+  const zone = _SCROLL_ZONE;
+  let speed = 0;
+
+  if (clientY < rect.top + zone) {
+    // ── 上端ゾーン（リスト上端より zone px 以内、またはリストより上）──
+    // dist: zone を超えないようにクランプ（リスト外では最大速度を維持）
+    const dist = Math.min(rect.top + zone - clientY, zone);
+    speed = -(dist / zone) * _SCROLL_MAX;
+  } else if (clientY > rect.bottom - zone) {
+    // ── 下端ゾーン（リスト下端より zone px 以内、またはリストより下）──
+    const dist = Math.min(clientY - (rect.bottom - zone), zone);
+    speed = (dist / zone) * _SCROLL_MAX;
+  }
+
+  _ds.scrollSpeed    = speed;
+  _ds.scrollContainer = container;
+
+  // ループ未起動かつ速度あり → RAFを起動
+  if (speed !== 0 && !_ds.scrollRaf) {
+    _ds.scrollRaf = requestAnimationFrame(_autoScrollTick);
+  }
+}
+
+/** RAFループ本体：_ds.scrollContainer の scrollTop を毎フレーム更新 */
+function _autoScrollTick() {
+  // ドラッグ解除 or 速度ゼロ → ループ終了
+  if (!_ds.activated || _ds.scrollSpeed === 0) {
+    _ds.scrollRaf = null;
+    return;
+  }
+  if (_ds.scrollContainer) _ds.scrollContainer.scrollTop += _ds.scrollSpeed;
+  _ds.scrollRaf = requestAnimationFrame(_autoScrollTick);
+}
+
+/** スクロールループを確実に停止（ドロップ・キャンセル時に呼ぶ） */
+function _stopAutoScroll() {
+  if (_ds.scrollRaf) { cancelAnimationFrame(_ds.scrollRaf); _ds.scrollRaf = null; }
+  _ds.scrollSpeed = 0;
+  _ds.scrollContainer = null;
+}
+
+/** マウス：ハンドルを押下した瞬間 */
+function _dhMouseDown(e, handle) {
+  e.preventDefault(); e.stopPropagation();
+  const item = handle.closest('.wp-item');
+  if (!item) return;
+  _ds.srcEl   = item;
+  _ds.srcId   = item.dataset.schoolId;
+  _ds.startX  = e.clientX;
+  _ds.startY  = e.clientY;
+  _ds.activated = false;
+  document.addEventListener('mousemove', _dhMouseMove, { passive: false });
+  document.addEventListener('mouseup',   _dhMouseUp);
+  // 少し移動したらドラッグ開始（または長押し300msでも起動）
+  _ds.longPressTimer = setTimeout(() => { _dhActivate(e.clientX, e.clientY); }, 300);
+}
+
+/** タッチ：ハンドルを長押し */
+function _dhTouchStart(e, handle) {
+  e.stopPropagation();
+  const item = handle.closest('.wp-item');
+  if (!item) return;
+  const t = e.touches[0];
+  _ds.srcEl   = item;
+  _ds.srcId   = item.dataset.schoolId;
+  _ds.startX  = t.clientX;
+  _ds.startY  = t.clientY;
+  _ds.activated = false;
+  document.addEventListener('touchmove',   _dhTouchMove,   { passive: false });
+  document.addEventListener('touchend',    _dhTouchEnd);
+  document.addEventListener('touchcancel', _dhTouchEnd);
+  // 長押し500ms でドラッグ起動
+  _ds.longPressTimer = setTimeout(() => {
+    _dhActivate(t.clientX, t.clientY);
+    if (navigator.vibrate) navigator.vibrate(40); // 触覚フィードバック
+  }, 500);
+}
+
+/** ドラッグを有効化：ゴースト生成・ソースを半透明に */
+function _dhActivate(x, y) {
+  if (!_ds.srcEl) return;
+  _ds.activated = true;
+  _ds.active    = true;
+  // ハンドルにアクティブ状態
+  const dh = _ds.srcEl.querySelector('.drag-handle');
+  if (dh) dh.classList.add('dh-active');
+  // ゴースト
+  const g = document.createElement('div');
+  g.className = 'drag-ghost';
+  const nm = _ds.srcEl.querySelector('.wp-name');
+  g.textContent = nm ? nm.textContent : '';
+  document.body.appendChild(g);
+  _ds.ghostEl = g;
+  _dhMoveGhost(x, y);
+  _ds.srcEl.classList.add('is-dragging');
+}
+
+function _dhMoveGhost(x, y) {
+  if (!_ds.ghostEl) return;
+  _ds.ghostEl.style.transform = `translate(${x + 14}px, ${y - 24}px)`;
+}
+
+function _dhMouseMove(e) {
+  if (!_ds.srcEl) return;
+  if (!_ds.activated) {
+    // 5px 以上動いたらタイマーより先に起動
+    if (Math.abs(e.clientX - _ds.startX) > 5 || Math.abs(e.clientY - _ds.startY) > 5) {
+      clearTimeout(_ds.longPressTimer);
+      _dhActivate(e.clientX, e.clientY);
+    }
+    return;
+  }
+  e.preventDefault();
+  _dhMoveGhost(e.clientX, e.clientY);
+  _dhUpdateTarget(e.clientX, e.clientY);
+  _updateAutoScroll(e.clientY);    // ← オートスクロール速度を更新
+}
+
+function _dhTouchMove(e) {
+  if (!_ds.srcEl) return;
+  const t = e.touches[0];
+  if (!_ds.activated) {
+    // 長押し中に大きく動いたらキャンセル
+    if (Math.abs(t.clientX - _ds.startX) > 12 || Math.abs(t.clientY - _ds.startY) > 12) {
+      clearTimeout(_ds.longPressTimer);
+      _dhCleanup();
+    }
+    return;
+  }
+  e.preventDefault();
+  _dhMoveGhost(t.clientX, t.clientY);
+  _dhUpdateTarget(t.clientX, t.clientY);
+  _updateAutoScroll(t.clientY);    // ← オートスクロール速度を更新
+}
+
+/** カーソル下のアイテムにドロップインジケーターを表示 */
+function _dhUpdateTarget(x, y) {
+  const list = document.getElementById('schoolList');
+  if (!list) return;
+  const items = Array.from(list.querySelectorAll('.wp-item:not(.is-dragging)'));
+  items.forEach(el => el.classList.remove('drop-before', 'drop-after'));
+  _ds.currentTarget = null;
+  for (const item of items) {
+    const r = item.getBoundingClientRect();
+    if (y >= r.top && y <= r.bottom) {
+      _ds.isBefore = (y < r.top + r.height / 2);
+      item.classList.add(_ds.isBefore ? 'drop-before' : 'drop-after');
+      _ds.currentTarget = item;
+      break;
+    }
+  }
+}
+
+function _dhMouseUp() {
+  clearTimeout(_ds.longPressTimer);
+  document.removeEventListener('mousemove', _dhMouseMove);
+  document.removeEventListener('mouseup',   _dhMouseUp);
+  _dhFinish();
+}
+
+function _dhTouchEnd(e) {
+  const wasActivated = _ds.activated; // cleanup 前に退避
+  clearTimeout(_ds.longPressTimer);
+  document.removeEventListener('touchmove',   _dhTouchMove);
+  document.removeEventListener('touchend',    _dhTouchEnd);
+  document.removeEventListener('touchcancel', _dhTouchEnd);
+  // ドラッグが有効化されていた場合、touchend 後に合成される click を抑止する
+  // （指を動かさず長押し→離した場合に selectSchool が誤爆するのを防ぐ）
+  if (wasActivated && e) e.preventDefault();
+  _dhFinish();
+}
+
+function _dhFinish() {
+  if (_ds.active && _ds.currentTarget) {
+    _dhReorder(_ds.srcId, _ds.currentTarget.dataset.schoolId, _ds.isBefore);
+  }
+  _dhCleanup();
+}
+
+function _dhCleanup() {
+  clearTimeout(_ds.longPressTimer);
+  _stopAutoScroll();                 // ← RAFループを確実に停止
+  if (_ds.srcEl) {
+    _ds.srcEl.classList.remove('is-dragging');
+    const dh = _ds.srcEl.querySelector('.drag-handle');
+    if (dh) dh.classList.remove('dh-active');
+  }
+  if (_ds.ghostEl) { _ds.ghostEl.remove(); }
+  const list = document.getElementById('schoolList');
+  if (list) list.querySelectorAll('.wp-item').forEach(el =>
+    el.classList.remove('drop-before', 'drop-after', 'is-dragging'));
+  Object.assign(_ds, {
+    active:false, activated:false, srcEl:null, srcId:null,
+    ghostEl:null, startX:0, startY:0, currentTarget:null,
+    isBefore:false, longPressTimer:null,
+    scrollRaf:null, scrollSpeed:0, scrollContainer:null  // ← スクロール状態もリセット
+  });
+}
+
+/** 並び替えを実行して保存 */
+function _dhReorder(srcId, targetId, insertBefore) {
+  if (!srcId || !targetId || srcId === targetId) return;
+
+  // 全 ID の現在順序を構築（フィルタ済みリスト + 非表示分も含む）
+  const allIds = Object.keys(poolMapping).filter(k => k !== '220');
+  let order = (config.poolSchoolOrder && config.poolSchoolOrder.length > 0)
+    ? [...config.poolSchoolOrder]
+    : allIds.sort((a, b) => parseInt(a) - parseInt(b));
+  // 新しい ID があれば末尾に追加
+  allIds.forEach(id => { if (!order.includes(id)) order.push(id); });
+
+  // srcId を取り除いて targetId の前後に挿入
+  order = order.filter(id => id !== srcId);
+  const ti = order.indexOf(targetId);
+  if (ti < 0) return;
+  order.splice(insertBefore ? ti : ti + 1, 0, srcId);
+
+  config.poolSchoolOrder = order;
+  saveConfig();
+  renderSchoolList();
+  showToast('順番を変更しました');
+}
+
+// Service Worker 登録（PWAインストール用）
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(r => console.log('Pool SW registered', r.scope))
+    .catch(e => console.log('Pool SW failed', e));
+
+  // バックグラウンドで新SWがアクティブになった瞬間に即反映
+  let __swReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (__swReloaded) return;
+    __swReloaded = true;
+    console.log('[SW] controllerchange → reload');
+    location.reload();
+  });
+}
+
+// ============================================================
+// SW-FIX: 強制アップデート
+//  - Service Worker を全て unregister
+//  - Cache Storage を全て削除
+//  - ?_t=<now> 付きでハードリロード（中間CDN/HTTPキャッシュ回避）
+// メインスレッドをブロックしないよう async/await で実装
+// ============================================================
+async function forceAppUpdate() {
+  try {
+    if (typeof showToast === 'function') showToast('最新版を取得中...');
+  } catch (_) {}
+
+  try {
+    // 1) Service Worker 登録解除
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(reg => reg.unregister().catch(() => false)));
+    }
+
+    // 2) Cache Storage 全削除
+    if (typeof caches !== 'undefined' && caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k).catch(() => false)));
+    }
+  } catch (err) {
+    console.warn('[forceAppUpdate] cleanup warning:', err);
+    // 失敗してもリロードまで到達させる
+  }
+
+  // 3) キャッシュバスター付きで強制リロード
+  try {
+    const url = new URL(location.href);
+    url.searchParams.set('_t', Date.now().toString());
+    // ブラウザ履歴を汚さず、中間キャッシュを無効化して遷移
+    location.replace(url.toString());
+  } catch (_) {
+    // URL API が万一失敗した場合の保険
+    location.reload();
+  }
+}
+</script>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<!-- memo-init script:                                                       -->
+<!-- ・contenteditable な #memoTextarea (div) に .value 互換アクセサを注入   -->
+<!--   既存JSは ta.value で読み書きするため、Object.defineProperty で        -->
+<!--   .value を innerText (hidden時はDOM walk) のラッパとして実装する。     -->
+<!-- ・paste イベントを捕捉して書式付き貼り付けを plain text に変換。        -->
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function memoInitG(){
+  // hidden 要素でも正しいテキストを取れる読み取り関数
+  // innerText は layout 依存で hidden 要素では "" を返すため、その場合は DOM を
+  // 手動走査して <br>=\n、<div>/<p>=ブロック改行 のルールでテキストを再構成する。
+  function walkForText(el) {
+    var out = '';
+    var nodes = el.childNodes;
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeType === 3) {
+        out += node.nodeValue;
+      } else if (node.nodeType === 1) {
+        var tag = node.tagName;
+        if (tag === 'BR') {
+          out += '\n';
+        } else if (tag === 'DIV' || tag === 'P') {
+          if (out.length > 0 && out.charAt(out.length - 1) !== '\n') out += '\n';
+          out += walkForText(node);
+        } else {
+          out += walkForText(node);
+        }
+      }
+    }
+    return out;
+  }
+
+  function readMemoText(el) {
+    var t = el.innerText;
+    if (t || el.childNodes.length === 0) return t;
+    return walkForText(el);
+  }
+
+  function attachValueAccessor() {
+    var ta = document.getElementById('memoTextarea');
+    if (!ta) return false;
+    if (ta.__hasValueAccessor) return true;
+    if (ta.tagName === 'TEXTAREA') return true; // 念のため: 元のtextareaなら何もしない
+    Object.defineProperty(ta, 'value', {
+      configurable: true,
+      enumerable: true,
+      get: function(){ return readMemoText(this); },
+      set: function(v){
+        // innerText 経由で改行を正しく扱う。空文字なら children を空にする。
+        if (v == null || v === '') {
+          this.textContent = '';
+        } else {
+          this.innerText = v;
+        }
+      }
+    });
+
+    // リッチテキスト貼り付けを plain text に強制変換
+    // contenteditable は HTML 付き貼り付けを許してしまうため、書式を剥がして
+    // テキストだけを挿入する。execCommand('insertText') は undo 対応 + plain text 挿入。
+    if (!ta.__hasPasteHandler) {
+      ta.addEventListener('paste', function(e){
+        try {
+          var clip = e.clipboardData || window.clipboardData;
+          if (!clip) return;
+          var text = clip.getData('text/plain') || clip.getData('text') || '';
+          e.preventDefault();
+          if (document.execCommand) {
+            document.execCommand('insertText', false, text);
+          } else {
+            var sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+              var range = sel.getRangeAt(0);
+              range.deleteContents();
+              range.insertNode(document.createTextNode(text));
+              range.collapse(false);
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+          }
+          // input イベントを手動発火して文字数カウントを更新
+          ta.dispatchEvent(new Event('input', { bubbles: true }));
+        } catch (err) {
+          console.warn('[memo] paste handler failed:', err && err.message);
+        }
+      });
+      ta.__hasPasteHandler = true;
+    }
+
+    ta.__hasValueAccessor = true;
+    return true;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){
+      attachValueAccessor();
+      // 念のため遅延も試行
+      setTimeout(attachValueAccessor, 100);
+      setTimeout(attachValueAccessor, 1000);
+    });
+  } else {
+    attachValueAccessor();
+    setTimeout(attachValueAccessor, 100);
+    setTimeout(attachValueAccessor, 1000);
+  }
+})();
+</script>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+
+</body>
+</html>

@@ -1,0 +1,36 @@
+# ===== 機微情報（絶対に登録しない）=====
+pool_settings.json
+.firebase/
+
+# ===== ビルド成果物・実行ファイル =====
+PoolWriter.exe
+build/
+dist/
+__pycache__/
+*.pyc
+*.spec~
+
+# ===== ログ =====
+*.log
+pool_writer.log
+
+# ===== バックアップ =====
+*.bak_*
+*.old
+*.backup
+
+# ===== 巨大バイナリ =====
+*.png
+!public/**/*.png
+*.jpg
+*.jpeg
+
+# ===== OS =====
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ===== エディタ =====
+.vscode/
+.idea/
+*.swp
