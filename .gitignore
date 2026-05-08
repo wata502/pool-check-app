@@ -15,9 +15,12 @@ __pycache__/
 pool_writer.log
 
 # ===== バックアップ =====
+*.bak
 *.bak_*
 *.old
 *.backup
+*.tmp
+~$*
 
 # ===== 巨大バイナリ =====
 *.png
