@@ -170,6 +170,9 @@ details.card:not([open])>summary.card-title{margin-bottom:0;padding-bottom:0;bor
 .form-textarea.has-prev{background:#ffca28;transition:background .15s}
 .form-textarea.has-prev::placeholder{color:#666;opacity:1;white-space:pre-wrap}
 .form-textarea.has-prev::-webkit-input-placeholder{color:#666;white-space:pre-wrap}
+/* 測定方式セレクト：前回値表示中は黄色背景 + グレー文字。値選択で白に戻る */
+.form-select.has-prev{background:#ffca28;transition:background .15s}
+.form-select.showing-prev{color:#888;font-weight:normal}
 
 /* ===== Data Display ===== */
 .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -430,7 +433,7 @@ div.memo-textarea:focus{outline:none;}
       </div>
       <div class="form-group mt-12">
         <label class="form-label">測定方式</label>
-        <select class="form-select" id="inp_grounding_method">
+        <select class="form-select" id="inp_grounding_method" onchange="_refreshGroundingMethodPrev(this)">
           <option value="">-- 選択 --</option>
           <option value="二極法">二極法</option>
           <option value="三極法">三極法</option>
@@ -1128,9 +1131,9 @@ function buildInputForm() {
   // 基本情報カード表示
   document.getElementById('inputFormCard').style.display = 'block';
 
-  // 接地測定方式をセット（デフォルト）
-  const methodSel = document.getElementById('inp_grounding_method');
-  methodSel.value = school.grounding_method || '';
+  // 接地測定方式：前回成功記録の値を「前回値」として黄色背景で表示
+  // （他の入力欄と同じ動作。新規入力は空で開始＝既存値温存ルールを踏襲）
+  setupGroundingMethodPrev(school);
 
   // 絶縁抵抗
   buildInsulationTable(school);
@@ -1722,12 +1725,14 @@ async function saveInspection() {
   // switchTab('history') 内で renderHistory() / updateHistoryFilter() が走る
   switchTab('history');
   // 直近保存レコードが見えるよう履歴の先頭へスクロール
+  // 実スクロールコンテナは .content (overflow-y:auto) のみ。
+  // window や #tab-history は overflow:hidden / 非スクロール要素のため対象外。
+  // renderHistory() による DOM 反映後に確実に先頭へリセットするため rAF で1フレーム待つ。
   try {
-    window.scrollTo({ top: 0, behavior: 'auto' });
-    const histTab = document.getElementById('tab-history');
-    if (histTab && typeof histTab.scrollTo === 'function') {
-      histTab.scrollTo({ top: 0, behavior: 'auto' });
-    }
+    requestAnimationFrame(() => {
+      const scroller = document.querySelector('.content');
+      if (scroller) scroller.scrollTop = 0;
+    });
   } catch(_) { /* no-op */ }
 }
 
@@ -2287,8 +2292,17 @@ function fillFormFromRecord(rec) {
     document.getElementById('inp_temperature').value = rec.header.temperature || '';
     document.getElementById('inp_humidity').value = rec.header.humidity || '';
     }
-  if (rec.grounding_method) {
-    document.getElementById('inp_grounding_method').value = rec.grounding_method;
+  // 編集モード時：レコードの値を明示セットし、前回値表示（黄色）は解除
+  {
+    const methodSel = document.getElementById('inp_grounding_method');
+    if (methodSel) {
+      if (rec.grounding_method) {
+        methodSel.value = rec.grounding_method;
+      } else {
+        methodSel.value = '';
+      }
+      _refreshGroundingMethodPrev(methodSel);
+    }
   }
   (rec.insulation||[]).forEach((r, i) => {
     const v = document.getElementById(`ins_val_${i}`); if (v) { v.value = r.value || ''; _refreshCellPrev(v); }
@@ -2335,6 +2349,59 @@ function _refreshJdgPrev(sel) {
   } else {
     td.classList.remove('has-prev');
     sel.classList.remove('showing-prev');
+  }
+}
+// 測定方式セレクト：前回値表示のセットアップ
+// - 直近 status==='success' の grounding_method を前回値として採用
+// - 「前回: ○○法」option を動的挿入し、選択状態 + 黄色背景
+// - 値あり：option.prev-disp は削除し、通常選択（黄色解除）
+// - 値なし＆前回値なし：通常の空選択
+// 保存ルール: select.value は常に「実際にユーザが選んだ値」を返す（空=未上書き）。
+// pool_writer.py 側は空文字をスキップするため、未選択時は Excel の既存値が温存される。
+function setupGroundingMethodPrev(school) {
+  const sel = document.getElementById('inp_grounding_method');
+  if (!sel) return;
+
+  // 既存の前回値表示 option を全削除（学校切替時の残骸防止）
+  sel.querySelectorAll('option.prev-disp').forEach(o => o.remove());
+  sel.value = '';
+  sel.dataset.hasPrev = '';
+  sel.classList.remove('has-prev', 'showing-prev');
+
+  if (!school) return;
+  const last = getLastSuccessRecord(school.id);
+  const prev = last && last.grounding_method ? String(last.grounding_method).trim() : '';
+  if (!prev) return;
+
+  // 前回値表示用のダミーoption（value=''なので保存値には影響しない）
+  const opt = document.createElement('option');
+  opt.value = '';
+  opt.className = 'prev-disp';
+  opt.textContent = `前回: ${prev}`;
+  opt.disabled = true;
+  opt.hidden = true;
+  // 先頭の「-- 選択 --」option の直後に挿入
+  const placeholderOpt = sel.querySelector('option[value=""]:not(.prev-disp)');
+  if (placeholderOpt && placeholderOpt.nextSibling) {
+    sel.insertBefore(opt, placeholderOpt.nextSibling);
+  } else {
+    sel.insertBefore(opt, sel.firstChild);
+  }
+
+  sel.dataset.hasPrev = '1';
+  opt.selected = true;
+  sel.classList.add('has-prev', 'showing-prev');
+}
+// 測定方式セレクトの背景・表示切替（onchange で呼ばれる）
+function _refreshGroundingMethodPrev(sel) {
+  if (!sel) return;
+  const hasPrev = sel.dataset && sel.dataset.hasPrev === '1';
+  if (hasPrev && !sel.value) {
+    const hiddenOpt = sel.querySelector('option.prev-disp');
+    if (hiddenOpt) hiddenOpt.selected = true;
+    sel.classList.add('has-prev', 'showing-prev');
+  } else {
+    sel.classList.remove('has-prev', 'showing-prev');
   }
 }
 // 特記事項 textarea：前回値を placeholder 表示する初期化
