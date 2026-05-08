@@ -170,9 +170,21 @@ details.card:not([open])>summary.card-title{margin-bottom:0;padding-bottom:0;bor
 .form-textarea.has-prev{background:#ffca28;transition:background .15s}
 .form-textarea.has-prev::placeholder{color:#666;opacity:1;white-space:pre-wrap}
 .form-textarea.has-prev::-webkit-input-placeholder{color:#666;white-space:pre-wrap}
+/* 備考 input[type=text]：前回値を placeholder 表示中は黄色背景 + グレー文字。入力で白に戻る */
+.meas-table input[type="text"].has-prev{background:#ffca28;transition:background .15s}
+.meas-table input[type="text"].has-prev::placeholder{color:#666;opacity:1}
+.meas-table input[type="text"].has-prev::-webkit-input-placeholder{color:#666}
 /* 測定方式セレクト：前回値表示中は黄色背景 + グレー文字。値選択で白に戻る */
 .form-select.has-prev{background:#ffca28;transition:background .15s}
 .form-select.showing-prev{color:#888;font-weight:normal}
+/* 測定不可ボタン（A2案）：黄色背景時に「-」を即時入力 */
+.btn-na{display:inline-block;width:28px;height:28px;margin-left:4px;padding:0;
+  border:1px solid #bbb;border-radius:4px;background:#f5f5f5;color:#444;
+  font-size:14px;font-weight:700;line-height:26px;text-align:center;cursor:pointer;
+  vertical-align:middle;flex-shrink:0}
+.btn-na:active{background:#e0e0e0}
+.meas-input-wrap{display:flex;align-items:center;gap:0}
+.meas-input-wrap .meas-input{flex:1;min-width:0}
 
 /* ===== Data Display ===== */
 .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -820,6 +832,73 @@ function init() {
   } else {
     updatePoolSyncStatus('idle');
   }
+
+  // 起動時に未同期レコード（cloud_pushed===false）が無いかチェックして常駐バナー表示
+  setTimeout(refreshUnsyncBanner, 300);
+}
+
+// ============================================================
+// 未同期レコード警告バナー（端末→Firebase 送信失敗の常駐通知）
+// ============================================================
+//   - cloud_pushed === false のレコードがあれば画面下部に固定表示
+//   - 「再送信」ボタンで一括 retry、「閉じる」で当該セッションのみ非表示
+//   - localStorage は触らないため、再起動・再訪問で再度警告される
+function getUnsyncedRecords() {
+  if (!Array.isArray(inspections)) return [];
+  return inspections.filter(r => r && r.cloud_pushed === false);
+}
+
+let _unsyncBannerHidden = false;
+
+function refreshUnsyncBanner() {
+  let banner = document.getElementById('unsyncBanner');
+  const list = getUnsyncedRecords();
+  // Firebase未設定なら警告対象にしない（Firebase利用しない運用も許容するため）
+  if (!_fbBase() || list.length === 0 || _unsyncBannerHidden) {
+    if (banner) banner.remove();
+    return;
+  }
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'unsyncBanner';
+    banner.style.cssText = [
+      'position:fixed', 'left:8px', 'right:8px', 'bottom:calc(8px + env(safe-area-inset-bottom))',
+      'background:#fff3cd', 'border:2px solid #ff8f00', 'color:#7a4f00',
+      'padding:10px 12px', 'border-radius:10px', 'font-size:13px',
+      'box-shadow:0 4px 12px rgba(0,0,0,0.15)', 'z-index:9998',
+      'display:flex', 'align-items:center', 'gap:8px', 'flex-wrap:wrap'
+    ].join(';');
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML = `
+    <div style="flex:1;min-width:160px">
+      ⚠ クラウド未同期: <b>${list.length}件</b><br>
+      <span style="font-size:11px;color:#8d6e00">端末にのみ存在しています。再送信を推奨。</span>
+    </div>
+    <button class="btn btn-primary btn-sm" style="font-size:12px;padding:4px 10px" onclick="retryAllCloudPush()">📡 一括再送信</button>
+    <button class="btn btn-outline btn-sm" style="font-size:12px;padding:4px 10px" onclick="dismissUnsyncBanner()">閉じる</button>
+  `;
+}
+
+function dismissUnsyncBanner() {
+  _unsyncBannerHidden = true;
+  const b = document.getElementById('unsyncBanner');
+  if (b) b.remove();
+}
+
+async function retryAllCloudPush() {
+  const list = getUnsyncedRecords();
+  if (list.length === 0) { showToast('未同期はありません'); return; }
+  if (!_fbBase()) { showToast('Firebase URLが設定されていません'); return; }
+  showToast(`☁️ ${list.length}件を再送信中...`);
+  let ok = 0, ng = 0;
+  for (const rec of list) {
+    const r = await pushRecordToFirebase(rec);
+    if (r.ok) ok++; else ng++;
+  }
+  showToast(`再送信完了: 成功${ok}件${ng>0?' / 失敗'+ng+'件':''}`);
+  renderHistory();
+  refreshUnsyncBanner();
 }
 
 // ============================================================
@@ -1207,6 +1286,31 @@ function getLastSuccessRecord(schoolId) {
   matches.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
   return matches[0];
 }
+// 備考の前回値「遡り探索」（特記事項と同じA案）
+//  - 同じ school_id + panel + circuit の status==='success' レコードを新しい順に走査
+//  - remarks が非空の最初の1件を採用する
+//  - pool_writer.py が空 remarks を Excel に書き込まない（前回値温存）ため、
+//    アプリ表示を Excel の実体と一致させる目的で遡って探索する
+//  - table: 'insulation' | 'grounding' | 'breaker_test'
+function getPrevRemarks(schoolId, table, panel, circuit) {
+  if (!schoolId || !Array.isArray(inspections) || !inspections.length) return '';
+  const matches = inspections.filter(r => r && r.school_id === schoolId && r.status === 'success');
+  if (!matches.length) return '';
+  matches.sort((a, b) =>
+    new Date(b.updatedAt || b.createdAt || 0) -
+    new Date(a.updatedAt || a.createdAt || 0)
+  );
+  const p = panel || '';
+  const c = circuit || '';
+  for (const rec of matches) {
+    const rows = (rec && rec[table]) || [];
+    const row = rows.find(x => x && (x.panel || '') === p && (x.circuit || '') === c);
+    if (row && row.remarks && String(row.remarks).trim()) {
+      return String(row.remarks);
+    }
+  }
+  return '';
+}
 function _findPrevRow(prevRows, panel, circuit) {
   if (!Array.isArray(prevRows) || !prevRows.length) return null;
   const p = panel || '';
@@ -1230,6 +1334,7 @@ function buildInsulationTable(school) {
     const p = _findPrevRow(prevRows, r.panel, r.circuit);
     const pv = p && p.value != null ? String(p.value).trim() : '';
     const pj = p && p.judgment ? String(p.judgment).trim() : '';
+    const pRem = getPrevRemarks(school.id, 'insulation', r.panel, r.circuit);
     const valPh = pv !== '' ? _escAttr(pv) : '--';
     const valCellCls = pv !== '' ? ' has-prev' : '';
     const valHasPrev = pv !== '' ? '1' : '';
@@ -1239,12 +1344,15 @@ function buildInsulationTable(school) {
     const jdgPrevOpt = pj !== ''
       ? `<option value="" disabled hidden selected class="prev-disp">${_escAttr(pj)}</option>`
       : '';
+    const remPh = pRem !== '' ? _escAttr(pRem) : '備考';
+    const remHasPrev = pRem !== '' ? '1' : '';
+    const remCls = pRem !== '' ? ' has-prev' : '';
     return `
     <tr>
       <td class="cell-fixed">${r.panel || ''}</td>
       <td class="cell-fixed">${r.circuit || ''}</td>
       <td style="text-align:right;color:var(--text-secondary)">${r.voltage || ''}</td>
-      <td class="${valCellCls.trim()}"><input type="number" step="1" min="0" id="ins_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"></td>
+      <td class="${valCellCls.trim()}"><div class="meas-input-wrap"><input type="text" inputmode="numeric" pattern="^(-|\\d+(\\.\\d+)?)$" id="ins_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"><button type="button" class="btn-na" title="測定不可（-）" onclick="_setMeasNA('ins_val_${i}')">−</button></div></td>
       <td class="${jdgCellCls.trim()}">
         <select class="judgment-select${jdgSelCls}" id="ins_jdg_${i}" data-has-prev="${jdgHasPrev}" onchange="_refreshJdgPrev(this)">
           ${jdgPrevOpt}
@@ -1252,9 +1360,10 @@ function buildInsulationTable(school) {
           <option value="良">良</option>
           <option value="注意">注意</option>
           <option value="不良">不良</option>
+          <option value="-">-（測定不可）</option>
         </select>
       </td>
-      <td><input type="text" id="ins_rem_${i}" placeholder="備考"></td>
+      <td><input type="text" id="ins_rem_${i}" class="${remCls.trim()}" placeholder="${remPh}" data-has-prev="${remHasPrev}" oninput="_refreshTextareaPrev(this)"></td>
     </tr>
   `;
   }).join('');
@@ -1269,6 +1378,7 @@ function buildGroundingTable(school) {
     const p = _findPrevRow(prevRows, r.panel, r.circuit);
     const pv = p && p.value != null ? String(p.value).trim() : '';
     const pj = p && p.judgment ? String(p.judgment).trim() : '';
+    const pRem = getPrevRemarks(school.id, 'grounding', r.panel, r.circuit);
     const valPh = pv !== '' ? _escAttr(pv) : '--';
     const valCellCls = pv !== '' ? ' has-prev' : '';
     const valHasPrev = pv !== '' ? '1' : '';
@@ -1278,12 +1388,15 @@ function buildGroundingTable(school) {
     const jdgPrevOpt = pj !== ''
       ? `<option value="" disabled hidden selected class="prev-disp">${_escAttr(pj)}</option>`
       : '';
+    const remPh = pRem !== '' ? _escAttr(pRem) : '備考';
+    const remHasPrev = pRem !== '' ? '1' : '';
+    const remCls = pRem !== '' ? ' has-prev' : '';
     return `
     <tr>
       <td class="cell-fixed">${r.panel || ''}</td>
       <td class="cell-fixed">${r.circuit || ''}</td>
       <td style="text-align:center;color:var(--text-secondary);font-size:12px">${r.type || ''}</td>
-      <td class="${valCellCls.trim()}"><input type="number" step="1" min="0" id="gnd_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"></td>
+      <td class="${valCellCls.trim()}"><div class="meas-input-wrap"><input type="text" inputmode="numeric" pattern="^(-|\\d+(\\.\\d+)?)$" id="gnd_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"><button type="button" class="btn-na" title="測定不可（-）" onclick="_setMeasNA('gnd_val_${i}')">−</button></div></td>
       <td class="${jdgCellCls.trim()}">
         <select class="judgment-select${jdgSelCls}" id="gnd_jdg_${i}" data-has-prev="${jdgHasPrev}" onchange="_refreshJdgPrev(this)">
           ${jdgPrevOpt}
@@ -1291,9 +1404,10 @@ function buildGroundingTable(school) {
           <option value="良">良</option>
           <option value="注意">注意</option>
           <option value="不良">不良</option>
+          <option value="-">-（測定不可）</option>
         </select>
       </td>
-      <td><input type="text" id="gnd_rem_${i}" placeholder="備考"></td>
+      <td><input type="text" id="gnd_rem_${i}" class="${remCls.trim()}" placeholder="${remPh}" data-has-prev="${remHasPrev}" oninput="_refreshTextareaPrev(this)"></td>
     </tr>
   `;
   }).join('');
@@ -1307,12 +1421,16 @@ function buildBreakerTable(school) {
   tbody.innerHTML = rows.map((r, i) => {
     const p = _findPrevRow(prevRows, r.panel, r.circuit);
     const pj = p && p.judgment ? String(p.judgment).trim() : '';
+    const pRem = getPrevRemarks(school.id, 'breaker_test', r.panel, r.circuit);
     const jdgCellCls = pj !== '' ? ' has-prev' : '';
     const jdgHasPrev = pj !== '' ? '1' : '';
     const jdgSelCls = pj !== '' ? ' showing-prev' : '';
     const jdgPrevOpt = pj !== ''
       ? `<option value="" disabled hidden selected class="prev-disp">${_escAttr(pj)}</option>`
       : '';
+    const remPh = pRem !== '' ? _escAttr(pRem) : '備考';
+    const remHasPrev = pRem !== '' ? '1' : '';
+    const remCls = pRem !== '' ? ' has-prev' : '';
     return `
     <tr>
       <td class="cell-fixed">${r.panel || ''}</td>
@@ -1326,9 +1444,10 @@ function buildBreakerTable(school) {
           <option value="良">良</option>
           <option value="注意">注意</option>
           <option value="不良">不良</option>
+          <option value="-">-（測定不可）</option>
         </select>
       </td>
-      <td><input type="text" id="brk_rem_${i}" placeholder="備考"></td>
+      <td><input type="text" id="brk_rem_${i}" class="${remCls.trim()}" placeholder="${remPh}" data-has-prev="${remHasPrev}" oninput="_refreshTextareaPrev(this)"></td>
     </tr>
   `;
   }).join('');
@@ -1715,9 +1834,30 @@ async function saveInspection() {
     inspections.unshift(data);
   }
   saveInspections();
-  await pushRecordToFirebase(data);
+
+  // ── 自動JSONバックアップ ──
+  // localStorage 消失・Firebase 送信失敗の二重事故を防ぐため、保存ボタン押下時のジェスチャ起源で
+  // 端末のダウンロードフォルダにレコード単体JSONを退避する。
+  // ※ ユーザー操作直後に呼ぶことで iOS Safari の制約（ジェスチャ起源必須）を回避。
+  // ※ ダウンロード失敗は致命的ではないため try/catch で握りつぶす。
+  try { downloadRecordAsJson(data); } catch(e) { console.warn('auto export failed:', e); }
+
+  // ── Firebase 送信 ──
+  let pushResult = { ok: false, error: 'no_firebase' };
+  if (_fbBase()) {
+    pushResult = await pushRecordToFirebase(data) || { ok: false };
+  }
+
   closeConfirm();
-  showToast('保存しました ✓');
+  // 送信成功時のみ ✓ トースト。未設定/失敗時は赤色警告で誤認を防ぐ。
+  if (!_fbBase()) {
+    showToast('💾 端末に保存しました（Firebase未設定）');
+  } else if (pushResult.ok) {
+    showToast('保存しました ✓');
+  } else {
+    showToast('⚠ 端末保存OK / クラウド送信失敗: ' + (pushResult.error || '') +
+              '\n履歴タブから再送信してください');
+  }
   clearForm();
   if (btn) { btn.disabled=false; btn.textContent='保存する'; }
 
@@ -1789,9 +1929,40 @@ function inspBaseUrl() {
   return base ? base + `/${FB_NODE_INSPECTIONS}` : null;
 }
 
+// レコード単体を端末のダウンロードフォルダにJSONとして退避する。
+// localStorage 消失時の最終バックアップとして機能する。
+// ファイル名はASCIIに正規化し、iOSでの文字化け・拒否を回避する。
+function downloadRecordAsJson(record) {
+  if (!record) return;
+  try {
+    const json = JSON.stringify(record, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    // 例: pool_2026-05-08T1230_school076.json
+    const dt = (record.header && record.header.date) ? String(record.header.date).replace(/[^0-9]/g,'') : '';
+    const tm = (record.header && record.header.time) ? String(record.header.time).replace(/[^0-9]/g,'') : '';
+    const sid = record.school_id || 'unknown';
+    a.href = url;
+    a.download = `pool_${dt}_${tm}_school${sid}.json`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch(_) {}
+    }, 1000);
+  } catch(e) {
+    console.warn('downloadRecordAsJson failed:', e);
+  }
+}
+
+// pushRecordToFirebase
+//   端末→Firebase の送信。戻り値: { ok: boolean, error?: string }
+//   結果は record.cloud_pushed / cloud_error / cloud_pushed_at に永続化する。
+//   ※ 既存の status / syncAt / error_msg は PoolWriter→Excel 書込状態用なので触らない。
 async function pushRecordToFirebase(record, _retryCount) {
   const base = inspBaseUrl();
-  if (!base || !record || !record.id) return;
+  if (!base || !record || !record.id) return { ok: false, error: 'no_base_or_id' };
   const retryCount = _retryCount || 0;
   try {
     await _fbEnsureToken();
@@ -1806,14 +1977,57 @@ async function pushRecordToFirebase(record, _retryCount) {
         await new Promise(r => setTimeout(r, (retryCount + 1) * 2000));
         return pushRecordToFirebase(record, retryCount + 1);
       }
+      _markCloudPushResult(record, false, 'HTTP ' + resp.status);
+      return { ok: false, error: 'HTTP ' + resp.status };
     }
+    _markCloudPushResult(record, true);
+    return { ok: true };
   } catch(e) {
     console.warn('pushRecordToFirebase error:', e);
     if (retryCount < 3) {
       await new Promise(r => setTimeout(r, (retryCount + 1) * 2000));
       return pushRecordToFirebase(record, retryCount + 1);
     }
+    const msg = (e && e.message) ? e.message : String(e);
+    _markCloudPushResult(record, false, msg);
+    return { ok: false, error: msg };
   }
+}
+
+// 端末ローカルの inspections 配列の同IDレコードに送信結果を反映する。
+// 引数の record オブジェクト自体にもプロパティを書き込み、呼出側でも参照可能にする。
+function _markCloudPushResult(record, ok, errMsg) {
+  if (!record) return;
+  record.cloud_pushed = !!ok;
+  record.cloud_pushed_at = ok ? new Date().toISOString() : (record.cloud_pushed_at || null);
+  record.cloud_error = ok ? null : (errMsg || 'unknown');
+  try {
+    if (Array.isArray(inspections) && record.id) {
+      const idx = inspections.findIndex(r => r && r.id === record.id);
+      if (idx >= 0) {
+        inspections[idx].cloud_pushed = record.cloud_pushed;
+        inspections[idx].cloud_pushed_at = record.cloud_pushed_at;
+        inspections[idx].cloud_error = record.cloud_error;
+        saveInspections();
+      }
+    }
+  } catch(e) { console.warn('_markCloudPushResult persist error:', e); }
+}
+
+// 単一レコードのクラウド再送信（履歴タブの「📡再送信」ボタンから呼ばれる）
+async function retryCloudPush(idx) {
+  const rec = inspections[idx];
+  if (!rec) return;
+  if (!_fbBase()) { showToast('Firebase URLが設定されていません'); return; }
+  showToast('☁️ クラウドに再送信中...');
+  const r = await pushRecordToFirebase(rec);
+  if (r.ok) {
+    showToast('✅ クラウド送信成功');
+  } else {
+    showToast('❌ 送信失敗: ' + (r.error || ''));
+  }
+  renderHistory();
+  refreshUnsyncBanner();
 }
 
 async function sendToExcel(record) {
@@ -2152,12 +2366,22 @@ function renderHistory() {
     } else {
       statusBadge = `<span class="history-badge" style="background:#e3f2fd;color:#1565c0">💾 保存済</span>`;
     }
+    // クラウド未同期バッジ（既存status badgeとは独立に併存表示）
+    let cloudBadge = '';
+    if (hasFb && rec.cloud_pushed === false) {
+      cloudBadge = `<span class="history-badge" style="background:#fff3cd;color:#7a4f00;border:1px solid #ff8f00;margin-left:4px">📡 未同期</span>`;
+    }
 
     let actionBtns = '';
     // skipped は処理完了扱いのため「Excel送信」ボタンを表示しない（初期状態に戻るバグを防ぐ）
     if (hasFb && st !== 'success' && st !== 'pending' && st !== 'skipped') {
       actionBtns += `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 8px"
         onclick="event.stopPropagation();sendSingle(${realIdx})">${st==='error'?'🔄再送信':'📥Excel送信'}</button>`;
+    }
+    // クラウド未同期時の再同期ボタン（status系を変更しないライト送信）
+    if (hasFb && rec.cloud_pushed === false) {
+      actionBtns += `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 8px;border-color:#ff8f00;color:#7a4f00"
+        onclick="event.stopPropagation();retryCloudPush(${realIdx})">📡再同期</button>`;
     }
     actionBtns += `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 8px;color:#dc3545;border-color:#dc3545"
       onclick="event.stopPropagation();deleteSingle(${realIdx})">✕</button>`;
@@ -2173,7 +2397,7 @@ function renderHistory() {
       <div style="flex:1;min-width:0" onclick="showDetail(${realIdx})">
         <div class="history-header">
           <span class="history-date">${rec.header?.date||''} ${rec.header?.time||''}</span>
-          <span>${statusBadge}</span>
+          <span>${statusBadge}${cloudBadge}</span>
         </div>
         <div class="history-wp">${rec.school_name}</div>
         <div class="history-summary">${rec.header?.weather||''} ${rec.header?.temperature?rec.header.temperature+'℃':''} ｜ ${summary}</div>
@@ -2307,16 +2531,16 @@ function fillFormFromRecord(rec) {
   (rec.insulation||[]).forEach((r, i) => {
     const v = document.getElementById(`ins_val_${i}`); if (v) { v.value = r.value || ''; _refreshCellPrev(v); }
     const j = document.getElementById(`ins_jdg_${i}`); if (j) { _setJdgValue(j, r.judgment || ''); }
-    const m = document.getElementById(`ins_rem_${i}`); if (m) m.value = r.remarks || '';
+    const m = document.getElementById(`ins_rem_${i}`); if (m) { m.value = r.remarks || ''; _refreshTextareaPrev(m); }
   });
   (rec.grounding||[]).forEach((r, i) => {
     const v = document.getElementById(`gnd_val_${i}`); if (v) { v.value = r.value || ''; _refreshCellPrev(v); }
     const j = document.getElementById(`gnd_jdg_${i}`); if (j) { _setJdgValue(j, r.judgment || ''); }
-    const m = document.getElementById(`gnd_rem_${i}`); if (m) m.value = r.remarks || '';
+    const m = document.getElementById(`gnd_rem_${i}`); if (m) { m.value = r.remarks || ''; _refreshTextareaPrev(m); }
   });
   (rec.breaker_test||[]).forEach((r, i) => {
     const j = document.getElementById(`brk_jdg_${i}`); if (j) { _setJdgValue(j, r.judgment || ''); }
-    const m = document.getElementById(`brk_rem_${i}`); if (m) m.value = r.remarks || '';
+    const m = document.getElementById(`brk_rem_${i}`); if (m) { m.value = r.remarks || ''; _refreshTextareaPrev(m); }
   });
   {
     const ta = document.getElementById('inp_special_notes');
@@ -2332,6 +2556,17 @@ function _refreshCellPrev(el) {
   const hasPrev = el.dataset && el.dataset.hasPrev === '1';
   if (hasPrev && !el.value) td.classList.add('has-prev');
   else td.classList.remove('has-prev');
+}
+// A2案: 測定値を「-」（測定不可）に即時セット
+//  - inputmode="numeric" のキーボードに「-」が無いため、ボタン操作で代替
+//  - has-prev の黄色背景は値が入った時点で外れる（_refreshCellPrev 経由）
+function _setMeasNA(inputId) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.value = '-';
+  _refreshCellPrev(el);
+  // 入力イベントを発火させて他のリスナー（あれば）にも通知
+  try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
 }
 // 判定セレクトの背景・前回値表示を切替え
 // - 値が入っていれば has-prev / showing-prev を外して白に
