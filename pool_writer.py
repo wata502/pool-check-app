@@ -443,6 +443,12 @@ def write_pool_record(excel_path: str, record: dict, school_info: dict) -> tuple
         logging.info("  漏電遮断器テスト書き込み完了")
 
         # ===== 特記事項 =====
+        # 仕様:
+        #  - ユーザーの入力改行（\n）を段落区切りとして尊重する
+        #  - 各段落を順に書き込み、その段落について Justify() を適用して
+        #    H列幅で機械的に折返す（I列以降にはみ出さない）
+        #  - 次段落は、前段落が Justify で消費した最終行の次から書く
+        #  - 範囲(end_row)を超える段落は、最終セルに連結してオーバーフロー回避
         special_notes = record.get("special_notes") or ""  # None/null → 空文字列（None.strip()クラッシュを防ぐ）
         if special_notes.strip():
             notes_range = school_info.get("special_notes_range",
@@ -454,33 +460,90 @@ def write_pool_record(excel_path: str, record: dict, school_info: dict) -> tuple
             end_col    = re.sub(r'\d', '', end_cell).upper()
             end_row    = int(re.sub(r'[A-Za-z]', '', end_cell))
 
-            # 結合解除 & クリア
+            # 仕様（重要）:
+            #  - ユーザーは手動運用で「文字の割付」(= Range.Justify メソッド) を
+            #    A:H 範囲に対して使用している（I 列まで広げると印刷時にはみ出す）。
+            #  - したがって書込み側もテンプレートのセル書式・結合状態・行高・
+            #    WrapText 設定を一切変更してはならない。値の書込みと Justify 呼出
+            #    のみを行う。
+            #  - 列範囲はマッピング側の end_col に従う（特記事項は通常 H49）。
+            justify_end_col = end_col  # マッピング設定値をそのまま使用（=H）
+
+            # 各行の値だけクリア（書式・結合・WrapText・行高は触らない）
             for r in range(start_row, end_row + 1):
                 try:
-                    rng = ws.Range(f"{start_col}{r}:{end_col}{r}")
-                    rng.UnMerge()
                     ws.Range(f"{start_col}{r}").Value = ""
                 except Exception:
                     pass
 
-            # テキスト書き込み
-            ws.Range(f"{start_col}{start_row}").Value = special_notes
+            # 改行コードを統一して段落分割（CR/LF, CR, LF いずれにも対応）
+            paragraphs = (special_notes
+                          .replace("\r\n", "\n")
+                          .replace("\r", "\n")
+                          .split("\n"))
 
-            # 文字の割り付け（Justify）
-            try:
-                ws.Range(f"{start_col}{start_row}:{end_col}{end_row}").Justify()
-            except Exception as e:
-                logging.warning(f"  Justify() 失敗（スキップ）: {e}")
-                ws.Range(f"{start_col}{start_row}").Value = special_notes
+            current_row = start_row
+            for para in paragraphs:
+                # 空段落はそのまま空行として1行送る（連続改行も尊重）
+                if not para.strip():
+                    if current_row <= end_row:
+                        current_row += 1
+                    continue
 
-            # フォント統一
-            try:
-                rng_all = ws.Range(f"{start_col}{start_row}:{end_col}{end_row}")
-                rng_all.Font.Name = "游ゴシック"
-                rng_all.Font.Size = 11
-            except Exception:
-                pass
+                # 範囲オーバーフロー: 最終セルに残りを連結（情報欠落の防止）
+                if current_row > end_row:
+                    try:
+                        last_cell = ws.Range(f"{start_col}{end_row}")
+                        existing = str(last_cell.Value or "")
+                        last_cell.Value = (existing + " " + para).strip()
+                    except Exception:
+                        pass
+                    continue
 
+                # 段落を A 列の現在行に書込み
+                try:
+                    ws.Range(f"{start_col}{current_row}").Value = para
+                except Exception as e:
+                    logging.warning(
+                        f"  特記事項 値書込み失敗 (行{current_row}): {e}")
+                    current_row += 1
+                    continue
+
+                # 文字の割付 (= Range.Justify) を A:I の現在行〜end_row 範囲に適用。
+                #  - DisplayAlerts=False 下では「下方拡張」確認ダイアログが
+                #    キャンセル扱いになり値が消えるケースがあるため、
+                #    Justify 呼出の前後で DisplayAlerts を一時的に True に戻し、
+                #    Application.Run 経由で同期実行することで挙動を安定化させる。
+                prev_alerts = xl_app.DisplayAlerts
+                try:
+                    xl_app.DisplayAlerts = True  # ダイアログを正規ルートで処理
+                    ws.Range(
+                        f"{start_col}{current_row}:"
+                        f"{justify_end_col}{end_row}"
+                    ).Justify()
+                except Exception as e:
+                    # Justify が失敗した場合でも書込み済みの値はそのまま残す
+                    logging.warning(
+                        f"  文字の割付(Justify)失敗 (行{current_row}): {e}")
+                finally:
+                    xl_app.DisplayAlerts = prev_alerts
+
+                # Justify 後、この段落で実際に消費された行数を A 列で検出
+                used_rows = 1
+                for r in range(current_row + 1, end_row + 1):
+                    try:
+                        v = ws.Range(f"{start_col}{r}").Value
+                    except Exception:
+                        v = None
+                    if v is not None and str(v).strip():
+                        used_rows = r - current_row + 1
+                    else:
+                        break
+
+                current_row += used_rows
+
+            # フォント・行高・WrapText・結合状態などのセル書式は
+            # テンプレートの設定を尊重し、書込み側からは変更しない。
             logging.info("  特記事項書き込み完了")
 
         # ===== 保存 =====

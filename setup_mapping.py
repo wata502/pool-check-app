@@ -70,10 +70,52 @@ def col_to_num(col_str: str) -> int:
         result = result * 26 + (ord(c) - ord('A') + 1)
     return result
 
+def num_to_col(n: int) -> str:
+    """1始まり列番号 → 列記号"""
+    s = ""
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        s = chr(ord('A') + r) + s
+    return s
+
 def safe_str(val) -> str:
     if val is None:
         return ""
     return str(val).strip()
+
+
+def find_grounding_method_cell(ws, default_cell: str = "H23"):
+    """
+    接地抵抗測定セクション周辺で「測定方式」ラベルを動的検出し、
+    その右隣のセル位置(例: "H24")と現在値を返す。
+
+    走査範囲: 行20〜25, 列A〜G（右隣がH列以内に収まるよう G列まで）
+    見つからなければ default_cell をそのまま返す（後方互換）。
+
+    ※ シートごとに1〜2行のレイアウトずれ（H23/H24混在）を吸収するための仕組み。
+       検出範囲外まで広げると誤検出のリスクが上がるため、意図的に狭く制限。
+    """
+    try:
+        for r in range(20, 26):
+            for c in range(1, 8):  # A〜G
+                v = safe_str(ws.Cells(r, c).Value)
+                if "測定方式" in v:
+                    target_col = c + 1
+                    cell_addr = f"{num_to_col(target_col)}{r}"
+                    cell_val = safe_str(ws.Cells(r, target_col).Value)
+                    return cell_addr, cell_val
+    except Exception:
+        # スキャン中の例外はフォールバック扱い（堅牢性優先）
+        pass
+
+    # フォールバック: default_cell の値を読む
+    try:
+        mc = re.sub(r'\d', '', default_cell).upper()
+        mr = int(re.sub(r'[A-Za-z]', '', default_cell))
+        cell_val = safe_str(ws.Cells(mr, col_to_num(mc)).Value)
+    except Exception:
+        cell_val = ""
+    return default_cell, cell_val
 
 
 # ========== Excel スキャン ==========
@@ -167,8 +209,10 @@ def scan_file(xl_app, file_path: str) -> tuple[str, dict] | None:
                 "type": grnd_type,
             })
 
-        # 測定方式（H23）
-        grounding_method_val = safe_str(ws.Cells(23, col_to_num("H")).Value)
+        # 測定方式: 「測定方式」ラベルを動的検出して右隣のセル位置と値を採用
+        # （シート毎に H23 / H24 等の差異を吸収。検出失敗時は GROUNDING_METHOD_CELL にフォールバック）
+        grounding_method_cell_addr, grounding_method_val = \
+            find_grounding_method_cell(ws, GROUNDING_METHOD_CELL)
 
         # ========== 漏電遮断器テスト スキャン ==========
         breaker_test = []
@@ -211,7 +255,7 @@ def scan_file(xl_app, file_path: str) -> tuple[str, dict] | None:
             "insulation_cols": INSULATION_COLS,
             "grounding": grounding,
             "grounding_cols": GROUNDING_COLS,
-            "grounding_method_cell": GROUNDING_METHOD_CELL,
+            "grounding_method_cell": grounding_method_cell_addr,
             "grounding_method": grounding_method_val,
             "breaker_test": breaker_test,
             "breaker_test_cols": BREAKER_TEST_COLS,
@@ -288,47 +332,30 @@ def scan_folder(folder_path: str) -> dict:
 
 def save_mapping(mapping_all: dict, output_path: str):
     """マッピングをJSONに保存する"""
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(mapping_all, f, ensure_ascii=False, indent=2)
-    print(f"\n✅ マッピングを保存しました: {output_path}")
-    print(f"   全{len(mapping_all)}校 (データあり: {sum(1 for v in mapping_all.values() if v['has_data'])}校)")
+    print(f"\n[保存] {output_path}")
+    print(f"  学校数: {len(mapping_all)}")
 
 
-# ========== メイン ==========
+# ========== エントリーポイント ==========
 
 def main():
-    print("=" * 60)
-    print(" プール点検 マッピング自動生成スクリプト")
-    print("=" * 60)
-
     if len(sys.argv) >= 2:
-        folder_path = sys.argv[1]
+        folder = sys.argv[1]
     else:
-        print("\nプールExcelファイルが格納されているフォルダのパスを入力してください。")
-        print("例: C:\\Users\\wata5\\Dropbox\\プール点検\\2026年度")
-        folder_path = input("フォルダパス > ").strip().strip('"')
+        folder = input("Excel格納フォルダのパスを入力してください: ").strip().strip('"')
 
-    if not folder_path:
-        print("[エラー] パスが入力されていません。")
+    if not folder or not os.path.isdir(folder):
+        print(f"[エラー] フォルダが存在しません: {folder}")
         sys.exit(1)
 
-    mapping_all = scan_folder(folder_path)
-
-    if not mapping_all:
-        print("\n[警告] マッピングデータが空です。フォルダパスを確認してください。")
-        input("Enterキーで終了...")
-        sys.exit(1)
-
-    save_mapping(mapping_all, str(OUTPUT_FILE))
-
-    print("\n生成されたマッピングの確認:")
-    for fid, info in sorted(mapping_all.items()):
-        has = "○" if info["has_data"] else "×"
-        print(f"  [{has}] {fid}  {info['school_name']}")
-
-    print("\n完了。pool_mapping.json を確認・微修正してください。")
-    print("次のステップ: FirebaseにもアップロードするにはFirebase CLIを使います。")
-    input("\nEnterキーで終了...")
+    mapping_all = scan_folder(folder)
+    if mapping_all:
+        save_mapping(mapping_all, str(OUTPUT_FILE))
+        print("\n[完了] pool_mapping.json を生成しました。")
+    else:
+        print("\n[警告] 有効なマッピングが見つかりませんでした。")
 
 
 if __name__ == "__main__":

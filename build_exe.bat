@@ -41,7 +41,23 @@ if errorlevel 1 (
 echo OK.
 
 echo [3/3] Copying exe...
+:: 実行中の PoolWriter.exe があると上書きに失敗する。事前停止確認。
+tasklist /FI "IMAGENAME eq PoolWriter.exe" 2>nul | find /I "PoolWriter.exe" >nul
+if not errorlevel 1 (
+    echo [ERROR] PoolWriter.exe is still running. Stop it from the tray icon and Task Manager, then retry.
+    pause
+    exit /b 1
+)
+
 copy /Y "dist\PoolWriter.exe" "PoolWriter.exe" > nul
+if errorlevel 1 (
+    echo [ERROR] Copy failed. PoolWriter.exe may be locked by a running instance.
+    pause
+    exit /b 1
+)
+
+:: コピー後のタイムスタンプを表示して目視確認できるようにする
+for %%F in ("PoolWriter.exe") do echo Updated: %%~tF  Size: %%~zF
 echo OK.
 
 echo.
