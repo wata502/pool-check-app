@@ -36,8 +36,13 @@ except ImportError:
 
 try:
     import requests
+    # ── HTTP 堅牢化のため Session + Retry を導入（urllib3 標準同梱）──
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
 except ImportError:
     requests = None
+    HTTPAdapter = None
+    Retry = None
 
 try:
     import sseclient
@@ -195,37 +200,139 @@ def _fb_auth_url(url, api_key):
     sep = "&" if "?" in url else "?"
     return f"{url}{sep}auth={token}"
 
+# ===== HTTP 共通レイヤ（Firebase 通信の堅牢化） =====
+# 目的:
+#   - urllib3 Retry でステータス系（5xx/429）を自動リトライ
+#   - SSL EOF / ConnectionError / ReadTimeout は別途、自前の指数バックオフで再試行
+#     （SSLEOFError は urllib3 のリトライ対象に入りにくく、明示的なリトライが必要）
+#   - 401/403 ではトークン強制再取得 → 1 回だけリトライ
+#   - HTTP コネクションを Session で使い回し、TLS ハンドシェイク回数を削減（軽快動作）
+def _build_http_session():
+    if requests is None:
+        return None
+    s = requests.Session()
+    if Retry is not None and HTTPAdapter is not None:
+        retry = Retry(
+            total=4, connect=4, read=4,
+            status_forcelist=(429, 500, 502, 503, 504),
+            backoff_factor=0.6,                 # 0.6,1.2,2.4,4.8 秒の指数バックオフ
+            allowed_methods=frozenset(
+                ["GET", "POST", "PATCH", "DELETE", "PUT"]),
+            raise_on_status=False,
+            respect_retry_after_header=True,
+        )
+        adapter = HTTPAdapter(
+            max_retries=retry, pool_connections=8, pool_maxsize=16)
+        s.mount("https://", adapter)
+        s.mount("http://", adapter)
+    return s
+
+# プロセス全体で 1 つの Session を共有（短寿命/破棄時はスレッドセーフな再生成）
+_HTTP_SESSION = _build_http_session()
+_HTTP_SESSION_LOCK = threading.Lock()
+
+
+def _http_request(method, url, *, api_key=None, json_body=None,
+                  timeout=15, max_attempts=4, log_prefix="HTTP"):
+    """
+    Firebase 向けの堅牢な HTTP リクエスト。
+      - SSL EOF / ConnectionError / ReadTimeout を最大 max_attempts 回まで指数バックオフ
+      - 401/403 は token 強制再取得後に 1 度だけ追加リトライ
+      - 戻り値: requests.Response（成功/最終応答）／全失敗時 None
+    api_key を渡した場合、毎回 _fb_auth_url() で最新トークンを付与する
+    （途中でトークンが更新されても古いトークンを焼き付けないため）。
+    """
+    if requests is None:
+        return None
+    global _HTTP_SESSION
+    sess = _HTTP_SESSION
+    if sess is None:
+        with _HTTP_SESSION_LOCK:
+            if _HTTP_SESSION is None:
+                _HTTP_SESSION = _build_http_session()
+            sess = _HTTP_SESSION
+
+    last_err = None
+    auth_retried = False
+    for attempt in range(max_attempts):
+        try:
+            req_url = _fb_auth_url(url, api_key) if api_key else url
+            resp = sess.request(
+                method, req_url, json=json_body, timeout=timeout)
+            # トークン期限切れ: 1 回だけ強制再認証して再試行
+            if resp.status_code in (401, 403) and api_key and not auth_retried:
+                auth_retried = True
+                global _fb_auth_token, _fb_auth_expiry
+                with _fb_auth_lock:
+                    _fb_auth_token = None
+                    _fb_auth_expiry = 0.0
+                logging.warning(
+                    f"[{log_prefix}] {resp.status_code} 認証失敗 — "
+                    f"トークンを再取得して再試行")
+                continue
+            return resp
+        except (requests.exceptions.SSLError,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ReadTimeout) as e:
+            # SSLEOFError や瞬断はここに来る — 指数バックオフで明示リトライ
+            last_err = e
+            if attempt >= max_attempts - 1:
+                break
+            wait = min(2 ** attempt, 20) + 0.25 * attempt
+            logging.warning(
+                f"[{log_prefix}] {type(e).__name__} 一時障害 "
+                f"(試行{attempt+1}/{max_attempts}) — {wait:.1f}s 後リトライ")
+            time.sleep(wait)
+        except Exception as e:
+            # その他は即時 break（呼び元で処理）
+            last_err = e
+            break
+    if last_err is not None:
+        logging.error(f"[{log_prefix}] 最終失敗 {method} {url.split('?')[0]}: {last_err}")
+    return None
+
+
 # ===== Firebase REST API =====
 def firebase_get_pending(firebase_url, api_key=""):
     """pool_inspections から status=pending のレコードを全件取得してローカルフィルタリング"""
     base = firebase_url.rstrip("/") + "/pool_inspections.json"
-    try:
-        url = _fb_auth_url(base, api_key)  # 認証URL生成をtry内に移動（例外を確実にキャッチ）
-        resp = requests.get(url, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-        if not isinstance(data, dict):
-            logging.info(f"firebase_get_pending: データなし (type={type(data).__name__})")
-            return {}
-        pending = {k: v for k, v in data.items()
-                   if isinstance(v, dict) and v.get("status") == "pending"}
-        logging.info(f"firebase_get_pending: 取得総件数={len(data)}, pending件数={len(pending)}")
-        return pending
-    except Exception as e:
-        logging.error(f"Firebase GET エラー: {e}")
+    # _http_request 内で Retry / 401リトライ / 指数バックオフを実施するため、
+    # 上位ではレスポンス検証のみに専念する（SSL EOF でクラッシュしないことを保証）
+    resp = _http_request("GET", base, api_key=api_key, timeout=15,
+                         log_prefix="FB-GET")
+    if resp is None or not resp.ok:
+        if resp is not None:
+            logging.error(f"Firebase GET 失敗: HTTP {resp.status_code}")
         return {}
+    try:
+        data = resp.json()
+    except Exception as e:
+        logging.error(f"Firebase GET JSONパース失敗: {e}")
+        return {}
+    if not isinstance(data, dict):
+        logging.info(
+            f"firebase_get_pending: データなし (type={type(data).__name__})")
+        return {}
+    pending = {k: v for k, v in data.items()
+               if isinstance(v, dict) and v.get("status") == "pending"}
+    logging.info(
+        f"firebase_get_pending: 取得総件数={len(data)}, pending件数={len(pending)}")
+    return pending
 
 def firebase_patch_status(firebase_url, record_id, patch_data, api_key=""):
-    """レコードの status を更新"""
-    url = _fb_auth_url(
-        firebase_url.rstrip("/") + f"/pool_inspections/{record_id}.json", api_key)
-    try:
-        resp = requests.patch(url, json=patch_data, timeout=15)
-        resp.raise_for_status()
-        return True
-    except Exception as e:
-        logging.error(f"Firebase PATCH エラー ({record_id}): {e}")
+    """レコードの status を更新（PATCH も _http_request 経由で堅牢化）"""
+    url = firebase_url.rstrip("/") + f"/pool_inspections/{record_id}.json"
+    resp = _http_request("PATCH", url, api_key=api_key, json_body=patch_data,
+                         timeout=15, log_prefix="FB-PATCH")
+    if resp is None:
+        # 通信全断: ワーカー側で error カウントされる。冪等性を尊重し False を返却
         return False
+    if not resp.ok:
+        logging.error(
+            f"Firebase PATCH 失敗 ({record_id}): HTTP {resp.status_code}")
+        return False
+    return True
 
 # ===== Excel 書き込みユーティリティ =====
 def col_to_num(col_str: str) -> int:
@@ -847,21 +954,24 @@ class PoolWriteWorker:
             self._error_count += 1
 
     def _fetch_record(self, record_id):
+        # _http_request 経由で SSL EOF / 401 をリトライ。クラッシュさせない。
         firebase_url = self.cfg.get("firebase_url", "").strip()
         api_key = self.cfg.get("firebase_api_key", "").strip()
         if not firebase_url:
             return None
+        url = firebase_url.rstrip("/") + f"/pool_inspections/{record_id}.json"
+        resp = _http_request("GET", url, api_key=api_key, timeout=10,
+                             log_prefix="FB-FETCH")
+        if resp is None or resp.status_code != 200:
+            if resp is not None:
+                self._log(f"  ⚠ レコード取得失敗 ({record_id}): HTTP {resp.status_code}")
+            return None
         try:
-            url = _fb_auth_url(
-                firebase_url.rstrip("/") + f"/pool_inspections/{record_id}.json",
-                api_key)
-            resp = requests.get(url, timeout=10)
-            if resp.status_code == 200:
-                data = resp.json()
-                if isinstance(data, dict):
-                    return data
+            data = resp.json()
+            if isinstance(data, dict):
+                return data
         except Exception as e:
-            self._log(f"  ⚠ レコード取得失敗 ({record_id}): {e}")
+            self._log(f"  ⚠ レコード JSON パース失敗 ({record_id}): {e}")
         return None
 
 
@@ -905,27 +1015,30 @@ class PoolPoller:
                     api_key = self.cfg.get("firebase_api_key", "").strip()
 
                     # ── 1. pool_commands/run_now を確認（スマホの「PC書込」ボタン用）──
+                    # _http_request 経由で SSL EOF / 瞬断は内部リトライ済み。
+                    # それでも全失敗した場合のみここに到達する（loop 全体の継続性保護）。
                     try:
-                        cmd_url = _fb_auth_url(
-                            firebase_url.rstrip("/") + "/pool_commands/run_now.json",
-                            api_key)
-                        resp = requests.get(cmd_url, timeout=5)
-                        if resp.status_code == 200:
-                            data = resp.json()
+                        cmd_url = firebase_url.rstrip("/") + "/pool_commands/run_now.json"
+                        # CMD は ~ 5 秒監視が要件のため short timeout は維持しつつ、
+                        # _http_request 内のバックオフで瞬断を吸収する
+                        resp = _http_request("GET", cmd_url, api_key=api_key,
+                                             timeout=8, max_attempts=2,
+                                             log_prefix="CMD-GET")
+                        if resp is not None and resp.status_code == 200:
+                            try:
+                                data = resp.json()
+                            except Exception:
+                                data = None
                             if isinstance(data, dict) and data.get("requestedAt"):
                                 ts = data["requestedAt"]
                                 if ts != self._last_cmd_ts:
                                     self._last_cmd_ts = ts
                                     self._log("[CMD] 📱 スマホからPC書込指示を受信")
-                                    try:
-                                        requests.delete(_fb_auth_url(
-                                            firebase_url.rstrip("/") + "/pool_commands/run_now.json",
-                                            api_key), timeout=5)
-                                    except Exception:
-                                        pass
+                                    # コマンド削除も _http_request 経由（失敗無視）
+                                    _http_request("DELETE", cmd_url, api_key=api_key,
+                                                  timeout=8, max_attempts=2,
+                                                  log_prefix="CMD-DEL")
                                     # pending レコードをキューに投入
-                                    # ※ 冪等性は updatedAt ベースで判定し、
-                                    #    ユーザーによる再送信（updatedAt 更新）は 5 分以内でも受け付ける
                                     records = firebase_get_pending(firebase_url, api_key)
                                     n = 0
                                     for rid, rec_data in records.items():
@@ -937,7 +1050,8 @@ class PoolPoller:
                                     else:
                                         self._log("[CMD] 未処理レコード: なし")
                     except Exception as e:
-                        logging.warning(f"[CMD] コマンドチェックエラー: {e}")
+                        # 何らかの想定外例外でもポーリング自体は継続させる
+                        logging.warning(f"[CMD] コマンドチェック想定外例外: {e}")
 
                     # ── 2. SSE 未接続時のポーリング（pending レコードの自動検出）──
                     #    冪等性は CMD 側と同じく updatedAt ベースで判定する
@@ -1412,12 +1526,16 @@ class PoolWriterApp:
         try:
             token = _get_firebase_token(api_key)
             if token:
-                url = _fb_auth_url(firebase_url.rstrip("/") + "/pool_inspections.json", api_key)
-                resp = requests.get(url, timeout=10)
-                if resp.status_code == 200:
+                # 接続テストも _http_request 経由で SSL EOF を耐性化
+                url = firebase_url.rstrip("/") + "/pool_inspections.json"
+                resp = _http_request("GET", url, api_key=api_key, timeout=10,
+                                     max_attempts=2, log_prefix="TEST")
+                if resp is not None and resp.status_code == 200:
                     self.lbl_test_result.config(text="✓ 接続成功", foreground="green")
-                else:
+                elif resp is not None:
                     self.lbl_test_result.config(text=f"✗ HTTP {resp.status_code}", foreground="red")
+                else:
+                    self.lbl_test_result.config(text="✗ 接続失敗（リトライ後も到達不能）", foreground="red")
             else:
                 self.lbl_test_result.config(text="✗ トークン取得失敗", foreground="red")
         except Exception as e:
