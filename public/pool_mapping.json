@@ -519,12 +519,6 @@
         "panel": "プール循環浄化装置分電盤",
         "circuit": "ろ過ポンプ制御盤",
         "capacity": 75
-      },
-      {
-        "row": 35,
-        "panel": "プール循環浄化装置分電盤",
-        "circuit": "塩素滅菌器",
-        "capacity": 15
       }
     ],
     "breaker_test_cols": {
@@ -1476,7 +1470,7 @@
       "remarks": "G"
     },
     "grounding_method_cell": "H24",
-    "grounding_method": "",
+    "grounding_method": "二極法",
     "breaker_test": [
       {
         "row": 33,
