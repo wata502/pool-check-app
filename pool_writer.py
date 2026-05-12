@@ -903,15 +903,48 @@ def write_pool_record(excel_path: str, record: dict, school_info: dict) -> tuple
             pass
 
 
+# find_excel_file の探索結果キャッシュ
+#   - rglob は深いフォルダで毎回コストが高い（書込試行のたびに発生していた）
+#   - ファイル名→絶対パスを TTL 60 秒でキャッシュし、軽快動作を担保
+#   - キャッシュヒット時もパス存在を再確認し、リネーム/削除に追随
+_EXCEL_PATH_CACHE: dict = {}
+_EXCEL_PATH_CACHE_TTL = 60.0
+_EXCEL_PATH_CACHE_LOCK = threading.Lock()
+
+
 def find_excel_file(base_folder: str, file_name: str) -> str | None:
-    """フォルダ内を再帰検索してファイルを探す"""
+    """フォルダ内を再帰検索してファイルを探す（TTL付きキャッシュ）"""
+    if not base_folder or not file_name:
+        return None
+    key = (str(base_folder), file_name)
+    now = time.time()
+    with _EXCEL_PATH_CACHE_LOCK:
+        cached = _EXCEL_PATH_CACHE.get(key)
+        if cached:
+            path, ts = cached
+            if (now - ts) < _EXCEL_PATH_CACHE_TTL and path and os.path.exists(path):
+                return path
+            # 期限切れ or 存在しない → エントリ削除
+            _EXCEL_PATH_CACHE.pop(key, None)
+
     base = Path(base_folder)
     if not base.is_dir():
         return None
-    for p in base.rglob(file_name):
-        if p.is_file():
-            return str(p.resolve())
-    return None
+    found = None
+    try:
+        for p in base.rglob(file_name):
+            if p.is_file():
+                found = str(p.resolve())
+                break
+    except Exception as e:
+        # 一時的な I/O エラー（ネットワークドライブ瞬断等）でクラッシュさせない
+        logging.warning(f"find_excel_file rglob 例外: {e}")
+        return None
+
+    if found:
+        with _EXCEL_PATH_CACHE_LOCK:
+            _EXCEL_PATH_CACHE[key] = (found, now)
+    return found
 
 
 # ===== キュー・ワーカー =====
@@ -1141,16 +1174,28 @@ class PoolWriteWorker:
 
         self._log(f"  → {excel_path}")
 
-        # Excel 書き込み（リトライ付き）
+        # Excel 書き込み（指数バックオフ付きリトライ）
+        # 1, 2, 4, 8, 16 秒の指数バックオフで最大 5 回試行（合計 ~31 秒）
+        # ロック以外のエラーは即時失敗として error カウント（無駄な再試行を避ける）
         ok, msg = False, ""
-        for attempt in range(3):
+        lock_backoff = (1, 2, 4, 8, 16)
+        max_attempts = len(lock_backoff) + 1
+        for attempt in range(max_attempts):
             ok, msg = write_pool_record(excel_path, record, school_info)
             if ok:
                 break
-            if "LOCKED:" in msg and attempt < 2:
-                self._log(f"  ⚠ ロック検出 (試行{attempt+1}/3) — 3秒待機...")
-                time.sleep(3)
-            else:
+            if "LOCKED:" not in msg:
+                # 非ロック系エラー: 即座に break（不要な再試行を排除）
+                break
+            if attempt >= len(lock_backoff):
+                # 全試行ロック検出: 最終的にエラーとして上位で記録
+                break
+            wait = lock_backoff[attempt]
+            self._log(
+                f"  ⚠ ロック検出 — {wait}秒待機して再試行 "
+                f"(試行{attempt+1}/{max_attempts})")
+            # 中断要求があればロック待ちを早期終了
+            if self._stop_event.wait(wait):
                 break
 
         if ok:
