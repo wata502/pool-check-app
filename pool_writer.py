@@ -55,9 +55,15 @@ try:
     import win32com.client
     import pythoncom
     import pywintypes
+    # win32process は Excel ゾンビプロセスの PID 取得に使用（強制終了の最終手段）
+    import win32process
     WIN32_AVAILABLE = True
 except ImportError:
     WIN32_AVAILABLE = False
+    win32process = None
+
+# subprocess は taskkill /F による Excel プロセス強制終了に使用（_safe_com_cleanup 参照）
+import subprocess
 
 # ===== パス設定 =====
 APP_NAME = "PoolWriter"
@@ -352,27 +358,234 @@ def _set_cell(ws, row, col_letter, value):
         safe_value = str(value)
     ws.Cells(row, col_to_num(col_letter)).Value = safe_value
 
+def _excel_pid(xl_app):
+    """xl_app.Hwnd → GetWindowThreadProcessId で実 PID を取得。
+    Quit() が COM 例外で失敗した場合のフォールバックに使用する。"""
+    if xl_app is None or win32process is None:
+        return None
+    try:
+        hwnd = xl_app.Hwnd
+        if not hwnd:
+            return None
+        _tid, pid = win32process.GetWindowThreadProcessId(hwnd)
+        return int(pid) if pid else None
+    except Exception:
+        return None
+
+
+def _kill_pid_force(pid, timeout=3.0):
+    """taskkill /F でプロセスを強制終了。CREATE_NO_WINDOW で黒窓抑止。"""
+    if not pid:
+        return
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/PID", str(pid)],
+            check=False, timeout=timeout,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            creationflags=0x08000000,  # CREATE_NO_WINDOW
+        )
+    except Exception:
+        pass
+
+
 def _safe_com_cleanup(wb, xl_app):
+    """COM オブジェクトの確実な解放。Quit() 失敗時は PID kill にフォールバック。
+    ※ ゾンビ EXCEL.EXE が ~$ ロックファイルを握り続けて以後の書込が永続失敗する
+       問題を防ぐため、解放経路を二段構えにしている。"""
+    pid = _excel_pid(xl_app)  # Quit 前に PID を控えておく（Quit 後は Hwnd が無効になる）
+
+    # ── ステップ 1: ワークブッククローズ（変更を破棄）──
     if wb is not None:
+        try:
+            wb.Saved = True   # 未保存ダイアログ抑止
+        except Exception:
+            pass
         try:
             wb.Close(SaveChanges=False)
         except Exception:
             pass
+
+    # ── ステップ 2: アプリ状態を正規モードに復帰してから Quit ──
+    quit_ok = False
     if xl_app is not None:
-        for prop, val in [("EnableEvents", True), ("DisplayAlerts", True),
-                          ("ScreenUpdating", True)]:
+        for prop, val in (("EnableEvents", True), ("DisplayAlerts", True),
+                          ("ScreenUpdating", True)):
             try:
                 setattr(xl_app, prop, val)
             except Exception:
                 pass
         try:
-            setattr(xl_app, "Calculation", -4105)
+            setattr(xl_app, "Calculation", -4105)  # xlCalculationAutomatic
         except Exception:
             pass
         try:
             xl_app.Quit()
+            quit_ok = True
         except Exception:
             pass
+
+    # ── ステップ 3: COM 参照解放（GC 待たず即座にプロセス解放を促す）──
+    try:
+        del wb
+    except Exception:
+        pass
+    try:
+        del xl_app
+    except Exception:
+        pass
+
+    # ── ステップ 4: Quit が失敗 or 不完了の場合、PID を強制終了（最終手段）──
+    if (not quit_ok) and pid:
+        logging.warning(f"[COM] Excel.Quit 失敗 — PID {pid} を taskkill /F で強制終了")
+        _kill_pid_force(pid)
+
+# ===== 特記事項書込: 結合セル安全な Justify フォールバック =====
+# 背景: テンプレートの A39:H49 は行ごとに A:H が結合されており、
+#       Range("A:H").Justify() は MergeCells を含むと COM 例外
+#       (-2146827284 "結合したセルには行えません") を投げる。
+#       ここでは MergeCells を事前検出して Justify を回避し、
+#       ColumnWidth 合算 × 全角/半角文字幅で手動ラップする。
+
+def _is_range_merged(rng):
+    """Range が結合セルを含むか。MergeCells が None（一部結合）の場合も True 扱い。"""
+    try:
+        m = rng.MergeCells
+    except Exception:
+        return False
+    if m is None:
+        return True
+    return bool(m)
+
+
+def _calc_row_capacity(ws, start_col, end_col, _row):
+    """A:end_col の合計 ColumnWidth を「半角文字数の概算」として返す。
+    Excel の ColumnWidth は標準フォントでの半角文字数に近い値。"""
+    total = 0.0
+    for c in range(col_to_num(start_col), col_to_num(end_col) + 1):
+        try:
+            total += float(ws.Columns(c).ColumnWidth or 0)
+        except Exception:
+            pass
+    # 末尾余白マージン (5%) と最小値ガード（壊れたテンプレート対策）
+    return max(int(total * 0.95), 12)
+
+
+def _wrap_text_jp(text, max_units):
+    """全角=2, 半角=1 で行に分割。空文字列は ['']。"""
+    if not text:
+        return [""]
+    lines = []
+    buf_chars = []
+    units = 0
+    for ch in text:
+        # 0x7F 超えを全角扱い（簡易判定: 日本語運用では実用十分）
+        w = 2 if ord(ch) > 0x7F else 1
+        if units + w > max_units and buf_chars:
+            lines.append("".join(buf_chars))
+            buf_chars = [ch]
+            units = w
+        else:
+            buf_chars.append(ch)
+            units += w
+    if buf_chars:
+        lines.append("".join(buf_chars))
+    return lines or [""]
+
+
+def _write_paragraph_safely(ws, xl_app, start_col, end_col,
+                             current_row, end_row, paragraph):
+    """段落 1 つを current_row..end_row 範囲に書込み、消費行数を返す。
+       戻り値: (consumed_rows, overflowed: bool)
+       - 結合セル時は Justify を呼ばず手動ラップ
+       - 非結合時は Justify を試行 → COM例外時は手動ラップへフォールバック
+       - 範囲超過時は最終セルに残りを連結（情報欠落防止）"""
+    first_cell = ws.Range(f"{start_col}{current_row}")
+
+    # ── 結合セル判定: 結合なら最初から手動ラップ（Justify を呼ばない）──
+    if _is_range_merged(first_cell):
+        capacity = _calc_row_capacity(ws, start_col, end_col, current_row)
+        chunks = _wrap_text_jp(paragraph, capacity)
+        consumed = 0
+        for i, chunk in enumerate(chunks):
+            r = current_row + i
+            if r > end_row:
+                # 範囲オーバー: 最終セルに残りを連結（情報欠落の防止）
+                try:
+                    last = ws.Range(f"{start_col}{end_row}")
+                    existing = str(last.Value or "")
+                    rest = "".join(chunks[i:])
+                    last.Value = (existing + " " + rest).strip()
+                except Exception:
+                    pass
+                return (max(consumed, 1), True)
+            try:
+                ws.Range(f"{start_col}{r}").Value = chunk
+            except Exception as e:
+                logging.warning(f"  特記事項 結合セル書込失敗 (行{r}): {e}")
+            consumed = i + 1
+        return (max(consumed, 1), False)
+
+    # ── 非結合: 一旦書込 → Justify を試行 ──
+    try:
+        first_cell.Value = paragraph
+    except Exception as e:
+        logging.warning(f"  特記事項 値書込失敗 (行{current_row}): {e}")
+        return (1, False)
+
+    prev_alerts = xl_app.DisplayAlerts
+    used_justify = False
+    try:
+        xl_app.DisplayAlerts = True
+        ws.Range(
+            f"{start_col}{current_row}:{end_col}{end_row}"
+        ).Justify()
+        used_justify = True
+    except Exception as e:
+        # COM 例外（結合セル混在含む）時は値を一旦消して手動ラップへ
+        logging.info(f"  Justify 失敗 → 手動ラップへフォールバック (行{current_row}): {e}")
+        try:
+            first_cell.Value = ""
+        except Exception:
+            pass
+    finally:
+        xl_app.DisplayAlerts = prev_alerts
+
+    if not used_justify:
+        # 手動ラップ実行
+        capacity = _calc_row_capacity(ws, start_col, end_col, current_row)
+        chunks = _wrap_text_jp(paragraph, capacity)
+        consumed = 0
+        for i, chunk in enumerate(chunks):
+            r = current_row + i
+            if r > end_row:
+                try:
+                    last = ws.Range(f"{start_col}{end_row}")
+                    existing = str(last.Value or "")
+                    rest = "".join(chunks[i:])
+                    last.Value = (existing + " " + rest).strip()
+                except Exception:
+                    pass
+                return (max(consumed, 1), True)
+            try:
+                ws.Range(f"{start_col}{r}").Value = chunk
+            except Exception:
+                pass
+            consumed = i + 1
+        return (max(consumed, 1), False)
+
+    # Justify 成功時: 消費行数を A 列の値で再検出
+    used = 1
+    for r in range(current_row + 1, end_row + 1):
+        try:
+            v = ws.Range(f"{start_col}{r}").Value
+        except Exception:
+            v = None
+        if v is not None and str(v).strip():
+            used = r - current_row + 1
+        else:
+            break
+    return (used, False)
+
 
 # ===== プール点検 Excel 書き込み =====
 def write_pool_record(excel_path: str, record: dict, school_info: dict) -> tuple[bool, str]:
@@ -477,11 +690,21 @@ def write_pool_record(excel_path: str, record: dict, school_info: dict) -> tuple
                 try:
                     _set_cell(ws, row, insulation_cols["value"], float(entry["value"]))
                 except (ValueError, TypeError):
+                    # "-"（測定不可）等の非数値文字列はそのまま書き込み
                     _set_cell(ws, row, insulation_cols["value"], entry["value"])
-            if entry.get("judgment") not in (None, "", "-"):
+            # 判定: "-"（測定不可）も明示値として書き込む（除外しない）
+            if entry.get("judgment") not in (None, ""):
                 _set_cell(ws, row, insulation_cols["judgment"], entry["judgment"])
-            if entry.get("remarks"):
-                _set_cell(ws, row, insulation_cols["remarks"], entry["remarks"])
+            # 備考: 3状態分岐
+            #   ""           → 上書きしない（前回値温存）
+            #   空白文字のみ → 明示クリア（Excelセルを空に）
+            #   通常文字     → 上書き
+            rem = entry.get("remarks", "") or ""
+            if rem != "":
+                if rem.strip() == "":
+                    _set_cell(ws, row, insulation_cols["remarks"], "")
+                else:
+                    _set_cell(ws, row, insulation_cols["remarks"], rem)
 
         logging.info("  絶縁抵抗測定書き込み完了")
 
@@ -515,11 +738,18 @@ def write_pool_record(excel_path: str, record: dict, school_info: dict) -> tuple
                 try:
                     _set_cell(ws, row, grounding_cols["value"], float(entry["value"]))
                 except (ValueError, TypeError):
+                    # "-"（測定不可）等の非数値文字列はそのまま書き込み
                     _set_cell(ws, row, grounding_cols["value"], entry["value"])
-            if entry.get("judgment") not in (None, "", "-"):
+            # 判定: "-"（測定不可）も明示値として書き込む（除外しない）
+            if entry.get("judgment") not in (None, ""):
                 _set_cell(ws, row, grounding_cols["judgment"], entry["judgment"])
-            if entry.get("remarks"):
-                _set_cell(ws, row, grounding_cols["remarks"], entry["remarks"])
+            # 備考: 3状態分岐（空=温存／空白のみ=クリア／通常=上書き）
+            rem = entry.get("remarks", "") or ""
+            if rem != "":
+                if rem.strip() == "":
+                    _set_cell(ws, row, grounding_cols["remarks"], "")
+                else:
+                    _set_cell(ws, row, grounding_cols["remarks"], rem)
 
         logging.info("  接地抵抗測定書き込み完了")
 
@@ -542,10 +772,16 @@ def write_pool_record(excel_path: str, record: dict, school_info: dict) -> tuple
             entry = brk_by_row.get(row)
             if not entry:
                 continue
-            if entry.get("judgment") not in (None, "", "-"):
+            # 判定: "-"（測定不可）も明示値として書き込む（除外しない）
+            if entry.get("judgment") not in (None, ""):
                 _set_cell(ws, row, breaker_cols["judgment"], entry["judgment"])
-            if entry.get("remarks"):
-                _set_cell(ws, row, breaker_cols["remarks"], entry["remarks"])
+            # 備考: 3状態分岐（空=温存／空白のみ=クリア／通常=上書き）
+            rem = entry.get("remarks", "") or ""
+            if rem != "":
+                if rem.strip() == "":
+                    _set_cell(ws, row, breaker_cols["remarks"], "")
+                else:
+                    _set_cell(ws, row, breaker_cols["remarks"], rem)
 
         logging.info("  漏電遮断器テスト書き込み完了")
 
@@ -556,8 +792,12 @@ def write_pool_record(excel_path: str, record: dict, school_info: dict) -> tuple
         #    H列幅で機械的に折返す（I列以降にはみ出さない）
         #  - 次段落は、前段落が Justify で消費した最終行の次から書く
         #  - 範囲(end_row)を超える段落は、最終セルに連結してオーバーフロー回避
+        # 特記事項: 3状態分岐
+        #   ""           → 上書きしない（前回値温存）
+        #   空白文字のみ → 明示クリア（範囲を空にしてリターン）
+        #   通常文字     → 既存セルをクリアしたうえで段落を書き込み
         special_notes = record.get("special_notes") or ""  # None/null → 空文字列（None.strip()クラッシュを防ぐ）
-        if special_notes.strip():
+        if special_notes != "":
             notes_range = school_info.get("special_notes_range",
                           {"start": "A39", "end": "H49"})
             start_cell = notes_range.get("start", "A39")
@@ -577,87 +817,67 @@ def write_pool_record(excel_path: str, record: dict, school_info: dict) -> tuple
             justify_end_col = end_col  # マッピング設定値をそのまま使用（=H）
 
             # 各行の値だけクリア（書式・結合・WrapText・行高は触らない）
+            # 注: 空白文字のみの入力＝明示クリアの場合、ここで終了する
             for r in range(start_row, end_row + 1):
                 try:
                     ws.Range(f"{start_col}{r}").Value = ""
                 except Exception:
                     pass
 
-            # 改行コードを統一して段落分割（CR/LF, CR, LF いずれにも対応）
-            paragraphs = (special_notes
-                          .replace("\r\n", "\n")
-                          .replace("\r", "\n")
-                          .split("\n"))
+            # 空白文字のみ＝明示クリア。段落書き込みはスキップ
+            if not special_notes.strip():
+                logging.info("  特記事項クリア完了（明示クリア）")
+            else:
+                # 改行コードを統一して段落分割（CR/LF, CR, LF いずれにも対応）
+                paragraphs = (special_notes
+                              .replace("\r\n", "\n")
+                              .replace("\r", "\n")
+                              .split("\n"))
 
-            current_row = start_row
-            for para in paragraphs:
-                # 空段落はそのまま空行として1行送る（連続改行も尊重）
-                if not para.strip():
-                    if current_row <= end_row:
-                        current_row += 1
-                    continue
+                current_row = start_row
+                overflow_logged = False
+                for para in paragraphs:
+                    # 空段落はそのまま空行として1行送る（連続改行も尊重）
+                    if not para.strip():
+                        if current_row <= end_row:
+                            current_row += 1
+                        continue
 
-                # 範囲オーバーフロー: 最終セルに残りを連結（情報欠落の防止）
-                if current_row > end_row:
-                    try:
-                        last_cell = ws.Range(f"{start_col}{end_row}")
-                        existing = str(last_cell.Value or "")
-                        last_cell.Value = (existing + " " + para).strip()
-                    except Exception:
-                        pass
-                    continue
+                    # 範囲オーバーフロー: 最終セルに残りを連結（情報欠落の防止）
+                    if current_row > end_row:
+                        try:
+                            last_cell = ws.Range(f"{start_col}{end_row}")
+                            existing = str(last_cell.Value or "")
+                            last_cell.Value = (existing + " " + para).strip()
+                        except Exception:
+                            pass
+                        if not overflow_logged:
+                            logging.warning("  特記事項範囲超過 — 最終セルに連結")
+                            overflow_logged = True
+                        continue
 
-                # 段落を A 列の現在行に書込み
-                try:
-                    ws.Range(f"{start_col}{current_row}").Value = para
-                except Exception as e:
-                    logging.warning(
-                        f"  特記事項 値書込み失敗 (行{current_row}): {e}")
-                    current_row += 1
-                    continue
+                    # 結合セル安全な書込ヘルパーへ委譲
+                    #   - 結合セルなら手動ラップ（Justify を呼ばない＝COM 例外を完全回避）
+                    #   - 非結合なら Justify を試行 → 失敗時は手動ラップへフォールバック
+                    used_rows, overflowed = _write_paragraph_safely(
+                        ws, xl_app,
+                        start_col, justify_end_col,
+                        current_row, end_row, para)
+                    current_row += used_rows
+                    if overflowed and not overflow_logged:
+                        logging.warning("  特記事項範囲超過 — 最終セルに連結")
+                        overflow_logged = True
 
-                # 文字の割付 (= Range.Justify) を A:I の現在行〜end_row 範囲に適用。
-                #  - DisplayAlerts=False 下では「下方拡張」確認ダイアログが
-                #    キャンセル扱いになり値が消えるケースがあるため、
-                #    Justify 呼出の前後で DisplayAlerts を一時的に True に戻し、
-                #    Application.Run 経由で同期実行することで挙動を安定化させる。
-                prev_alerts = xl_app.DisplayAlerts
-                try:
-                    xl_app.DisplayAlerts = True  # ダイアログを正規ルートで処理
-                    ws.Range(
-                        f"{start_col}{current_row}:"
-                        f"{justify_end_col}{end_row}"
-                    ).Justify()
-                except Exception as e:
-                    # Justify が失敗した場合でも書込み済みの値はそのまま残す
-                    logging.warning(
-                        f"  文字の割付(Justify)失敗 (行{current_row}): {e}")
-                finally:
-                    xl_app.DisplayAlerts = prev_alerts
-
-                # Justify 後、この段落で実際に消費された行数を A 列で検出
-                used_rows = 1
-                for r in range(current_row + 1, end_row + 1):
-                    try:
-                        v = ws.Range(f"{start_col}{r}").Value
-                    except Exception:
-                        v = None
-                    if v is not None and str(v).strip():
-                        used_rows = r - current_row + 1
-                    else:
-                        break
-
-                current_row += used_rows
-
-            # フォント・行高・WrapText・結合状態などのセル書式は
-            # テンプレートの設定を尊重し、書込み側からは変更しない。
-            logging.info("  特記事項書き込み完了")
+                # フォント・行高・WrapText・結合状態などのセル書式は
+                # テンプレートの設定を尊重し、書込み側からは変更しない。
+                logging.info("  特記事項書き込み完了")
 
         # ===== 保存 =====
         xl_app.Calculation = -4105  # xlCalculationAutomatic
         wb.Save()
         logging.info("  保存完了")
-        time.sleep(1.0)
+        # 旧コード: time.sleep(1.0) — 確実な保存待ちのつもりだが、Save() は同期呼出のため不要。
+        # 削除して 1 件あたり 1 秒のレイテンシを削減（軽快動作）。
 
         wb.Saved = True
         wb.Close()
