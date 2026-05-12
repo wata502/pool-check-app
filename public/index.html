@@ -1835,13 +1835,6 @@ async function saveInspection() {
   }
   saveInspections();
 
-  // ── 自動JSONバックアップ ──
-  // localStorage 消失・Firebase 送信失敗の二重事故を防ぐため、保存ボタン押下時のジェスチャ起源で
-  // 端末のダウンロードフォルダにレコード単体JSONを退避する。
-  // ※ ユーザー操作直後に呼ぶことで iOS Safari の制約（ジェスチャ起源必須）を回避。
-  // ※ ダウンロード失敗は致命的ではないため try/catch で握りつぶす。
-  try { downloadRecordAsJson(data); } catch(e) { console.warn('auto export failed:', e); }
-
   // ── Firebase 送信 ──
   let pushResult = { ok: false, error: 'no_firebase' };
   if (_fbBase()) {
@@ -1927,33 +1920,6 @@ function cancelEdit() {
 function inspBaseUrl() {
   const base = _fbBase();
   return base ? base + `/${FB_NODE_INSPECTIONS}` : null;
-}
-
-// レコード単体を端末のダウンロードフォルダにJSONとして退避する。
-// localStorage 消失時の最終バックアップとして機能する。
-// ファイル名はASCIIに正規化し、iOSでの文字化け・拒否を回避する。
-function downloadRecordAsJson(record) {
-  if (!record) return;
-  try {
-    const json = JSON.stringify(record, null, 2);
-    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    // 例: pool_2026-05-08T1230_school076.json
-    const dt = (record.header && record.header.date) ? String(record.header.date).replace(/[^0-9]/g,'') : '';
-    const tm = (record.header && record.header.time) ? String(record.header.time).replace(/[^0-9]/g,'') : '';
-    const sid = record.school_id || 'unknown';
-    a.href = url;
-    a.download = `pool_${dt}_${tm}_school${sid}.json`;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch(_) {}
-    }, 1000);
-  } catch(e) {
-    console.warn('downloadRecordAsJson failed:', e);
-  }
 }
 
 // pushRecordToFirebase
