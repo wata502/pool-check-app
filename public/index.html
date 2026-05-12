@@ -178,13 +178,32 @@ details.card:not([open])>summary.card-title{margin-bottom:0;padding-bottom:0;bor
 .form-select.has-prev{background:#ffca28;transition:background .15s}
 .form-select.showing-prev{color:#888;font-weight:normal}
 /* 測定不可ボタン（A2案）：黄色背景時に「-」を即時入力 */
-.btn-na{display:inline-block;width:28px;height:28px;margin-left:4px;padding:0;
+/* マイナスボタンは計算上の必要最低限の幅（32px）に固定 */
+.btn-na{display:inline-flex;align-items:center;justify-content:center;
+  height:28px;padding:0;
   border:1px solid #bbb;border-radius:4px;background:#f5f5f5;color:#444;
-  font-size:14px;font-weight:700;line-height:26px;text-align:center;cursor:pointer;
-  vertical-align:middle;flex-shrink:0}
+  font-size:14px;font-weight:700;text-align:center;cursor:pointer;
+  vertical-align:middle;flex:0 0 32px}
 .btn-na:active{background:#e0e0e0}
-.meas-input-wrap{display:flex;align-items:center;gap:0}
-.meas-input-wrap .meas-input{flex:1;min-width:0}
+.meas-input-wrap{display:flex;align-items:center;gap:0;width:100%}
+/* 入力欄は親要素の残りの領域をすべて自動的に占有させる */
+.meas-input-wrap .meas-input{flex:1 1 auto;width:100%;min-width:0;
+  transition:box-shadow .15s ease}
+/* 動的オーバーレイ拡大：測定値セルの基準を作る */
+.meas-val-cell{position:relative}
+/* フォーカス時のみ絶対配置で隣セルに被せて拡大表示（120px） */
+.meas-val-cell .meas-input:focus{
+  position:absolute;top:0;left:0;
+  width:120px;height:calc(100% - 2px);
+  z-index:10;
+  background:#fff;
+  border:2px solid var(--primary);
+  border-radius:4px;
+  padding:4px 6px;
+  font-size:16px;
+  text-align:right;
+  box-shadow:0 2px 6px rgba(0,0,0,0.18)
+}
 
 /* ===== Data Display ===== */
 .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -1352,7 +1371,7 @@ function buildInsulationTable(school) {
       <td class="cell-fixed">${r.panel || ''}</td>
       <td class="cell-fixed">${r.circuit || ''}</td>
       <td style="text-align:right;color:var(--text-secondary)">${r.voltage || ''}</td>
-      <td class="${valCellCls.trim()}"><div class="meas-input-wrap"><input type="text" inputmode="numeric" pattern="^(-|\\d+(\\.\\d+)?)$" id="ins_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"><button type="button" class="btn-na" title="測定不可（-）" onclick="_setMeasNA('ins_val_${i}')">−</button></div></td>
+      <td class="meas-val-cell ${valCellCls.trim()}"><div class="meas-input-wrap"><input type="text" inputmode="decimal" pattern="^(-|\\d+(\\.\\d+)?)$" id="ins_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"><button type="button" class="btn-na" title="測定不可（-）" onclick="_setMeasNA('ins_val_${i}')">−</button></div></td>
       <td class="${jdgCellCls.trim()}">
         <select class="judgment-select${jdgSelCls}" id="ins_jdg_${i}" data-has-prev="${jdgHasPrev}" onchange="_refreshJdgPrev(this)">
           ${jdgPrevOpt}
@@ -1396,7 +1415,7 @@ function buildGroundingTable(school) {
       <td class="cell-fixed">${r.panel || ''}</td>
       <td class="cell-fixed">${r.circuit || ''}</td>
       <td style="text-align:center;color:var(--text-secondary);font-size:12px">${r.type || ''}</td>
-      <td class="${valCellCls.trim()}"><div class="meas-input-wrap"><input type="text" inputmode="numeric" pattern="^(-|\\d+(\\.\\d+)?)$" id="gnd_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"><button type="button" class="btn-na" title="測定不可（-）" onclick="_setMeasNA('gnd_val_${i}')">−</button></div></td>
+      <td class="meas-val-cell ${valCellCls.trim()}"><div class="meas-input-wrap"><input type="text" inputmode="decimal" pattern="^(-|\\d+(\\.\\d+)?)$" id="gnd_val_${i}" placeholder="${valPh}" class="meas-input" data-has-prev="${valHasPrev}" oninput="_refreshCellPrev(this)"><button type="button" class="btn-na" title="測定不可（-）" onclick="_setMeasNA('gnd_val_${i}')">−</button></div></td>
       <td class="${jdgCellCls.trim()}">
         <select class="judgment-select${jdgSelCls}" id="gnd_jdg_${i}" data-has-prev="${jdgHasPrev}" onchange="_refreshJdgPrev(this)">
           ${jdgPrevOpt}
@@ -2524,7 +2543,7 @@ function _refreshCellPrev(el) {
   else td.classList.remove('has-prev');
 }
 // A2案: 測定値を「-」（測定不可）に即時セット
-//  - inputmode="numeric" のキーボードに「-」が無いため、ボタン操作で代替
+//  - inputmode="decimal" のキーボードに「-」が無いため、ボタン操作で代替
 //  - has-prev の黄色背景は値が入った時点で外れる（_refreshCellPrev 経由）
 function _setMeasNA(inputId) {
   const el = document.getElementById(inputId);
